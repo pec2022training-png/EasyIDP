@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>個人發展行動追蹤系統</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    :root {
+      --primary:#0ea5e9;
+      --primary-dark:#0284c7;
+      --primary-soft:#e0f2fe;
+      --success:#10b981;
+      --success-dark:#059669;
+      --success-soft:#ecfdf5;
+      --warning:#f59e0b;
+      --warning-soft:#fffbeb;
+      --danger:#dc2626;
+      --danger-soft:#fff1f2;
+      --purple:#7c3aed;
+      --purple-soft:#f5f3ff;
+      --ink:#1e293b;
+      --ink-dark:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
+      --soft:#f8fafc;
+      --card:#ffffff;
+    }
+    * { box-sizing:border-box; }
+    [v-cloak] { display:none; }
+    html { scroll-behavior:smooth; }
+    body {
+      margin:0;
+      font-family:"微軟正黑體","Microsoft JhengHei",Arial,sans-serif;
+      background:var(--soft);
+      color:var(--ink);
+      overflow-x:hidden;
+    }
+    button,input,textarea,select { font:inherit; }
+    button { cursor:pointer; -webkit-tap-highlight-color:transparent; }
+    button:disabled { cursor:not-allowed; opacity:.48; transform:none !important; box-shadow:none !important; }
+    a { color:inherit; }
+    .loading-mask {
+      position:fixed; inset:0; z-index:9999; display:grid; place-items:center;
+      background:rgba(255,255,255,.94); font-size:1.25rem; font-weight:900; color:#334155;
+    }
+    .loading-card { display:flex; align-items:center; gap:12px; }
+    .spinner { width:30px; height:30px; border:4px solid #bae6fd; border-top-color:var(--primary); border-radius:50%; animation:spin .8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .toast {
+      position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:10000;
+      background:rgba(15,23,42,.94); color:#fff; border-radius:999px; padding:12px 21px;
+      box-shadow:0 12px 35px rgba(0,0,0,.24); max-width:92vw; text-align:center; font-weight:800;
+    }
+    .container { width:min(1180px,calc(100% - 32px)); margin:0 auto; padding:28px 0 70px; }
+    .student-container { width:min(900px,calc(100% - 28px)); margin:0 auto; padding:20px 0 90px; }
+    .card {
+      background:var(--card); border:1px solid var(--line); border-radius:17px; padding:24px;
+      box-shadow:0 4px 18px rgba(15,23,42,.055);
+    }
+    .btn {
+      border:0; border-radius:10px; padding:11px 17px; font-weight:900; transition:.18s;
+      display:inline-flex; align-items:center; justify-content:center; gap:7px; text-decoration:none;
+    }
+    .btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 7px 16px rgba(15,23,42,.12); }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-success { background:var(--success); color:#fff; }
+    .btn-warning { background:var(--warning); color:#fff; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .btn-purple { background:var(--purple); color:#fff; }
+    .btn-secondary { background:#64748b; color:#fff; }
+    .btn-ghost { background:#fff; color:#334155; border:1px solid var(--line); }
+    .btn-soft { background:#f0f9ff; color:#0284c7; border:1px solid #bae6fd; }
+    .btn-soft-green { background:#f0fdf4; color:#047857; border:1px solid #a7f3d0; }
+    .btn-soft-amber { background:#fffbeb; color:#b45309; border:1px solid #fde68a; }
+    .btn-block { width:100%; }
+    .btn-small { padding:7px 10px; font-size:.86rem; border-radius:8px; }
+    .field-label { display:block; margin:0 0 7px; font-weight:900; color:#273449; }
+    .field-help { margin:6px 0 0; color:var(--muted); font-size:.88rem; line-height:1.55; }
+    .required { color:var(--danger); }
+    input[type="text"],input[type="password"],input[type="number"],input[type="date"],textarea,select {
+      width:100%; border:1px solid #cbd5e1; border-radius:10px; padding:12px 13px; color:var(--ink);
+      background:#fff; outline:none; transition:.18s;
+    }
+    textarea { min-height:110px; resize:vertical; line-height:1.65; }
+    input:focus,textarea:focus,select:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(14,165,233,.12); }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:20px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .brand-icon {
+      width:52px; height:52px; border-radius:15px; display:grid; place-items:center;
+      background:linear-gradient(135deg,#0ea5e9,#1976d2); color:#fff; font-size:1.65rem;
+      box-shadow:0 8px 20px rgba(14,165,233,.22);
+    }
+    .brand h1 { margin:0; font-size:clamp(1.42rem,3vw,2rem); color:var(--ink-dark); }
+    .brand p { margin:4px 0 0; color:var(--muted); }
+    .toolbar { display:flex; gap:9px; flex-wrap:wrap; align-items:center; }
+    .login-wrap { min-height:100vh; display:grid; place-items:center; padding:24px; }
+    .login-box { width:min(440px,100%); border-top:7px solid var(--primary); text-align:center; padding:36px; }
+    .login-box .hero { font-size:3rem; margin-bottom:8px; }
+    .login-box h1 { margin:0 0 8px; color:var(--ink-dark); }
+    .login-box p { color:var(--muted); margin:0 0 22px; line-height:1.65; }
+    .login-box input { text-align:center; margin-bottom:13px; }
+    .login-box input[type="password"] { letter-spacing:3px; }
+    .create-row { display:grid; grid-template-columns:1fr auto; gap:12px; }
+    .activity-tabs { display:flex; gap:8px; flex-wrap:wrap; margin:20px 0 0; }
+    .pill-tab { border:1px solid var(--line); background:#fff; color:#475569; border-radius:999px; padding:9px 14px; font-weight:900; }
+    .pill-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .activity-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:18px; margin-top:20px; }
+    .activity-card { border-top:6px solid var(--primary); }
+    .activity-card.archived { border-top-color:#94a3b8; opacity:.82; }
+    .activity-card h3 { margin:0 0 8px; font-size:1.25rem; line-height:1.45; }
+    .activity-meta { color:var(--muted); font-size:.92rem; margin-bottom:17px; line-height:1.6; }
+    .activity-actions { display:grid; gap:8px; }
+    .inline-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .empty {
+      text-align:center; padding:48px 20px; color:var(--muted); border:2px dashed #cbd5e1;
+      border-radius:16px; background:rgba(255,255,255,.7); line-height:1.7;
+    }
+    .status-pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:7px 11px; font-size:.86rem; font-weight:900; }
+    .status-open { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
+    .status-closed { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+    .status-neutral { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
+    .teacher-hero {
+      background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff; border-radius:20px; padding:24px;
+      box-shadow:0 14px 34px rgba(15,23,42,.2); margin-bottom:18px;
+    }
+    .teacher-hero small { color:#bae6fd; font-weight:900; letter-spacing:.06em; }
+    .teacher-hero h2 { margin:7px 0 5px; font-size:clamp(1.55rem,4vw,2.25rem); }
+    .teacher-hero p { margin:0; color:#dbeafe; line-height:1.65; }
+    .hero-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+    .hero-pill { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:7px 11px; font-weight:800; }
+    .metric-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    .metric { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center; }
+    .metric strong { display:block; font-size:1.7rem; color:var(--primary-dark); }
+    .metric span { color:var(--muted); font-size:.88rem; line-height:1.4; }
+    .teacher-tabs { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 14px; }
+    .teacher-tab { border:1px solid var(--line); background:#fff; color:#475569; border-radius:999px; padding:10px 15px; font-weight:900; }
+    .teacher-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+    .section-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+    .section-head h2,.section-head h3 { margin:0; color:var(--ink-dark); }
+    .section-head p { margin:5px 0 0; color:var(--muted); line-height:1.55; }
+    .search-box { width:min(340px,100%); }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:13px; }
+    table { width:100%; border-collapse:collapse; min-width:970px; background:#fff; }
+    th,td { border-bottom:1px solid var(--line); padding:11px 10px; text-align:left; vertical-align:middle; }
+    th { background:#f1f5f9; color:#475569; font-size:.88rem; white-space:nowrap; }
+    td { color:#334155; }
+    tbody tr:hover { background:#f8fafc; }
+    .round-setting-list { display:grid; gap:13px; }
+    .round-setting-row { border:1px solid var(--line); border-radius:14px; padding:16px; background:#fff; }
+    .round-setting-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .round-number { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; background:var(--primary-soft); color:var(--primary-dark); font-weight:950; }
+    .round-setting-grid { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:11px; }
+    .round-permission-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin-top:12px; }
+    .permission-option { display:flex; align-items:flex-start; gap:8px; padding:11px 12px; border:1px solid var(--line); border-radius:11px; background:#f8fafc; color:#334155; font-weight:850; line-height:1.45; }
+    .permission-option input { width:19px; height:19px; margin-top:1px; accent-color:var(--primary); flex:0 0 auto; }
+    .permission-option.guidance { background:#fffbeb; border-color:#fde68a; color:#92400e; }
+    .settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
+    .full { grid-column:1/-1; }
+    .notice { border-radius:14px; padding:14px 16px; line-height:1.65; margin-bottom:16px; }
+    .notice-blue { background:#f0f9ff; color:#075985; border:1px solid #bae6fd; }
+    .notice-green { background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; }
+    .notice-amber { background:#fffbeb; color:#92400e; border:1px solid #fde68a; }
+    .notice-red { background:#fff1f2; color:#9f1239; border:1px solid #fecdd3; }
+    .student-hero { border-left:6px solid var(--primary); margin-bottom:16px; }
+    .student-hero h1 { margin:0 0 7px; font-size:clamp(1.5rem,5vw,2rem); color:var(--ink-dark); }
+    .student-hero p { margin:4px 0; color:var(--muted); line-height:1.65; }
+    .student-userbar { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; margin-top:15px; padding-top:14px; border-top:1px dashed var(--line); }
+    .round-nav { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:16px; }
+    .round-nav-btn { border:1px solid var(--line); background:#fff; border-radius:13px; padding:13px 9px; text-align:center; color:#475569; font-weight:900; }
+    .round-nav-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); box-shadow:0 7px 18px rgba(14,165,233,.22); }
+    .round-nav-btn.current:not(.active) { border-color:#86efac; background:#f0fdf4; color:#166534; }
+    .round-nav-btn small { display:block; margin-top:4px; font-size:.75rem; font-weight:700; opacity:.88; }
+    .round-banner { background:linear-gradient(135deg,#e0f2fe,#f0f9ff); border:1px solid #bae6fd; border-radius:17px; padding:20px; margin-bottom:16px; }
+    .round-banner h2 { margin:0 0 7px; color:#075985; }
+    .round-banner p { margin:4px 0; color:#0c4a6e; line-height:1.6; }
+    .period-strip { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:13px; }
+    .period-chip { background:#fff; border:1px solid #bae6fd; border-radius:11px; padding:10px; text-align:center; color:#075985; font-size:.86rem; line-height:1.45; }
+    .period-chip strong { display:block; }
+    .goal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .goal-card { position:relative; overflow:hidden; padding:0; }
+    .goal-card-head { padding:15px 17px; background:linear-gradient(135deg,#0ea5e9,#1976d2); color:#fff; }
+    .goal-card-head.green { background:linear-gradient(135deg,#10b981,#059669); }
+    .goal-card-head h3 { margin:0; font-size:1.12rem; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+    .goal-card-head small { display:block; margin-top:5px; color:#e0f2fe; }
+    .goal-card-body { padding:17px; }
+    .goal-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:15px; }
+    .monthly-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:15px; }
+    .month-box { border:1px solid var(--line); border-radius:12px; padding:10px; background:#f8fafc; text-align:center; min-height:135px; }
+    .month-box.checked { background:var(--success-soft); border-color:#a7f3d0; }
+    .month-box h4 { margin:0 0 5px; font-size:.94rem; }
+    .month-date { color:var(--muted); font-size:.76rem; line-height:1.35; min-height:31px; }
+    .month-count { margin:7px 0; font-weight:900; color:var(--primary-dark); font-size:.88rem; }
+    .check-line { display:flex; justify-content:center; align-items:center; gap:6px; font-weight:900; font-size:.86rem; }
+    .check-line input { width:20px; height:20px; accent-color:var(--success); }
+    .log-list { display:grid; gap:8px; }
+    .log-row { border:1px solid var(--line); border-radius:11px; padding:11px; background:#fff; }
+    .log-row.voided { opacity:.58; background:#f1f5f9; text-decoration:line-through; }
+    .log-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+    .log-title { font-weight:900; color:#334155; white-space:pre-wrap; line-height:1.5; }
+    .log-date { color:var(--primary-dark); font-weight:900; white-space:nowrap; }
+    .log-meta { color:var(--muted); font-size:.84rem; margin-top:5px; line-height:1.5; white-space:pre-wrap; }
+    .grid-nine-wrap { position:relative; max-width:850px; margin:0 auto; }
+    .grid-nine { position:relative; z-index:2; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .grid-cell { min-height:245px; border:2px solid #dbeafe; border-radius:15px; background:#fff; padding:11px; display:flex; flex-direction:column; }
+    .grid-cell.complete { border-color:#34d399; background:#f0fdf4; }
+    .grid-cell.empty-cell { align-items:center; justify-content:center; text-align:center; color:var(--muted); border-style:dashed; }
+    .grid-cell-number { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; background:var(--primary-soft); color:var(--primary-dark); font-weight:950; margin-bottom:8px; }
+    .grid-cell-title { font-weight:950; color:#334155; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; margin-bottom:8px; }
+    .grid-cell-progress { color:var(--success-dark); font-size:.84rem; font-weight:900; margin-bottom:8px; }
+    .grid-cell-actions { display:flex; flex-wrap:wrap; gap:5px; margin-top:auto; }
+    .teacher-grid-nine-wrap { position:relative; max-width:920px; margin:12px auto 0; }
+    .teacher-grid-nine { position:relative; z-index:2; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+    .teacher-grid-cell { min-height:150px; border:2px solid #dbeafe; border-radius:14px; background:#fff; padding:12px; text-align:left; display:flex; flex-direction:column; transition:.18s; }
+    .teacher-grid-cell.has-goal { cursor:pointer; }
+    .teacher-grid-cell.has-goal:hover { transform:translateY(-2px); border-color:#7dd3fc; box-shadow:0 7px 18px rgba(14,165,233,.13); }
+    .teacher-grid-cell.complete { border-color:#34d399; background:#f0fdf4; }
+    .teacher-grid-cell.empty-cell { border-style:dashed; color:var(--muted); align-items:center; justify-content:center; text-align:center; }
+    .teacher-grid-title { font-weight:950; line-height:1.45; overflow-wrap:anywhere; white-space:pre-wrap; margin:6px 0 8px; }
+    .teacher-grid-meta { margin-top:auto; color:var(--muted); font-size:.8rem; line-height:1.55; }
+    .identity-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+    .identity-summary > div { background:#f8fafc; border:1px solid var(--line); border-radius:11px; padding:11px; }
+    .bingo-svg { position:absolute; inset:0; width:100%; height:100%; z-index:3; pointer-events:none; overflow:visible; }
+    .bingo-line { stroke:#f59e0b; stroke-width:8; stroke-linecap:round; opacity:.82; filter:drop-shadow(0 2px 2px rgba(146,64,14,.25)); }
+    .bingo-summary { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:12px 0 16px; }
+    .summary-chip { border-radius:999px; padding:8px 13px; font-weight:900; background:#fff; border:1px solid var(--line); }
+    .summary-chip.green { background:#ecfdf5; border-color:#a7f3d0; color:#047857; }
+    .summary-chip.amber { background:#fffbeb; border-color:#fde68a; color:#b45309; }
+    .add-goal-card { min-height:190px; display:grid; place-items:center; text-align:center; border:2px dashed #bae6fd; background:#f0f9ff; color:#075985; }
+    .add-goal-card strong { display:block; font-size:1.15rem; margin-bottom:6px; }
+    .timeline { display:grid; gap:9px; }
+    .version-row { border-left:4px solid #cbd5e1; padding:10px 12px; background:#f8fafc; border-radius:0 10px 10px 0; }
+    .version-row.current { border-left-color:var(--success); background:#f0fdf4; }
+    .version-row h4 { margin:0 0 5px; white-space:pre-wrap; line-height:1.5; }
+    .version-meta { color:var(--muted); font-size:.84rem; line-height:1.5; }
+    .detail-round { margin-bottom:20px; }
+    .detail-round h3 { margin:0 0 10px; color:#075985; }
+    .detail-goal { border:1px solid var(--line); border-radius:13px; padding:14px; margin-bottom:10px; }
+    .detail-goal-head { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+    .detail-goal-title { font-weight:950; line-height:1.5; white-space:pre-wrap; }
+    .detail-meta { color:var(--muted); font-size:.85rem; margin-top:5px; }
+    .progress-bar { height:9px; background:#e2e8f0; border-radius:999px; overflow:hidden; margin-top:8px; }
+    .progress-bar > div { height:100%; background:linear-gradient(90deg,#10b981,#34d399); border-radius:999px; }
+    .modal-overlay { position:fixed; inset:0; z-index:5000; background:rgba(15,23,42,.64); display:grid; place-items:center; padding:18px; }
+    .modal { width:min(620px,100%); max-height:90vh; overflow:auto; background:#fff; border-radius:18px; padding:24px; box-shadow:0 25px 70px rgba(0,0,0,.32); }
+    .modal-wide { width:min(1050px,100%); }
+    .modal h2,.modal h3 { margin-top:0; color:var(--ink-dark); }
+    .modal-actions { display:flex; justify-content:flex-end; gap:9px; flex-wrap:wrap; margin-top:21px; }
+    .form-grid { display:grid; gap:14px; }
+    .two-col-form { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .confirm-icon { font-size:2.5rem; text-align:center; }
+    .confirm-text { text-align:center; line-height:1.7; color:#475569; white-space:pre-wrap; }
+    .danger-zone { border:1px solid #fecaca; background:#fff7f7; border-radius:14px; padding:15px; }
+    .muted { color:var(--muted); }
+    .small { font-size:.86rem; }
+    .no-data { color:var(--muted); text-align:center; padding:18px; }
+    .bottom-save {
+      position:sticky; bottom:10px; z-index:20; display:flex; justify-content:space-between; align-items:center; gap:12px;
+      margin-top:18px; padding:12px; border-radius:15px; background:rgba(255,255,255,.95); backdrop-filter:blur(8px);
+      border:1px solid var(--line); box-shadow:0 10px 30px rgba(15,23,42,.12);
+    }
+
+    .copyright-footer {
+      margin:34px auto 6px; padding:12px 8px 4px; text-align:center;
+      color:#94a3b8; font-size:.78rem; font-weight:600; letter-spacing:.02em; line-height:1.5;
+      user-select:none;
+    }
+    @media (max-width:980px) {
+      .metric-grid { grid-template-columns:repeat(3,1fr); }
+      .round-setting-grid { grid-template-columns:1fr 1fr; }
+      .round-setting-grid > :first-child { grid-column:1/-1; }
+      .grid-cell { min-height:225px; }
+    }
+    @media (max-width:720px) {
+      .container { width:min(100% - 22px,1180px); padding-top:16px; }
+      .student-container { width:min(100% - 20px,900px); padding-top:12px; }
+      .card { padding:18px; border-radius:14px; }
+      .login-box { padding:28px 20px; }
+      .create-row,.inline-actions,.settings-grid,.two-col-form,.goal-grid { grid-template-columns:1fr; }
+      .metric-grid { grid-template-columns:repeat(2,1fr); }
+      .round-nav { grid-template-columns:repeat(2,1fr); }
+      .round-setting-grid,.round-permission-grid { grid-template-columns:1fr; }
+      .round-setting-grid > :first-child { grid-column:auto; }
+      .period-strip { grid-template-columns:1fr; }
+      .monthly-grid { grid-template-columns:1fr; }
+      .month-box { min-height:auto; }
+      .grid-nine { gap:6px; }
+      .grid-cell { min-height:185px; padding:8px; border-radius:11px; }
+      .grid-cell-title { font-size:.84rem; }
+      .grid-cell-progress { font-size:.72rem; }
+      .grid-cell-actions .btn { width:100%; padding:6px 4px; font-size:.72rem; }
+      .bingo-line { stroke-width:6; }
+      .toolbar { width:100%; }
+      .toolbar .btn { flex:1 1 auto; }
+      .student-userbar { align-items:flex-start; }
+      .full { grid-column:auto; }
+    }
+    @media (max-width:430px) {
+      .metric-grid { grid-template-columns:1fr 1fr; }
+      .grid-cell { min-height:165px; }
+      .grid-cell-number { width:24px; height:24px; font-size:.78rem; }
+      .grid-cell-title { font-size:.76rem; }
+      .grid-cell-progress { font-size:.67rem; }
+      .round-nav-btn { padding:10px 5px; font-size:.86rem; }
+    }
+  </style>
+</head>
+<body>
+<div id="app" v-cloak>
+  <div v-if="isLoading" class="loading-mask"><div class="loading-card"><div class="spinner"></div><span>資料載入中...</span></div></div>
+  <div v-if="toastMsg" class="toast">{{ toastMsg }}</div>
+
+  <!-- 共用確認視窗 -->
+  <div v-if="confirmBox.show" class="modal-overlay">
+    <div class="modal" style="max-width:460px;">
+      <div class="confirm-icon">⚠️</div>
+      <h3 style="text-align:center;">確認操作</h3>
+      <div class="confirm-text">{{ confirmBox.message }}</div>
+      <div class="modal-actions" style="justify-content:center;">
+        <button class="btn btn-ghost" @click="confirmBox.show=false">取消</button>
+        <button class="btn btn-danger" @click="runConfirm">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 活動重新命名 -->
+  <div v-if="renameBox.show" class="modal-overlay" @click.self="renameBox.show=false">
+    <div class="modal" style="max-width:460px;">
+      <h2>✏️ 重新命名專案／活動</h2>
+      <label class="field-label">新名稱</label>
+      <input type="text" v-model.trim="renameBox.name" @keydown.enter="confirmRename" placeholder="請輸入活動名稱">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" @click="renameBox.show=false">取消</button>
+        <button class="btn btn-primary" @click="confirmRename">儲存名稱</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 講師設定 -->
+  <div v-if="showTeacherSettings" class="modal-overlay" @click.self="showTeacherSettings=false">
+    <div class="modal modal-wide">
+      <div class="section-head">
+        <div><h2>⚙️ 活動、期間與學員操作權限</h2><p>各輪日期由講師統一設定；每一輪可分別開放目標編修、完成紀錄與月份勾選，因此可同時讓學員完成上一輪勾選並設定下一輪計畫。</p></div>
+        <button class="btn btn-ghost" @click="showTeacherSettings=false">關閉</button>
+      </div>
+      <div class="settings-grid">
+        <div>
+          <label class="field-label">活動名稱 <span class="required">*</span></label>
+          <input type="text" v-model.trim="settingsDraft.title">
+        </div>
+        <div>
+          <label class="field-label">講師後台主要顯示 Round</label>
+          <select v-model="settingsDraft.currentRound">
+            <option :value="1">Round 1</option><option :value="2">Round 2</option><option :value="3">Round 3</option><option :value="4">Round 4</option>
+          </select>
+        </div>
+        <div class="full">
+          <label class="field-label">學員首頁說明</label>
+          <textarea v-model.trim="settingsDraft.introText" placeholder="例如：請從小而可持續的行動開始，留下自己的完成紀錄。"></textarea>
+        </div>
+        <div>
+          <label class="field-label">活動狀態</label>
+          <select v-model="settingsDraft.isOpen">
+            <option :value="true">開放學員使用</option>
+            <option :value="false">暫停學員使用</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">完成紀錄規則</label>
+          <select v-model="settingsDraft.requireLogBeforeCheck">
+            <option :value="true">每月需至少一筆紀錄才能勾選</option>
+            <option :value="false">允許學員自行直接勾選</option>
+          </select>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--line);margin:21px 0;"></div>
+      <div class="round-setting-list">
+        <div v-for="round in roundDraftArray" :key="round.id" class="round-setting-row">
+          <div class="round-setting-head">
+            <div class="round-number">{{ round.number }}</div>
+            <div><strong>Round {{ round.number }}</strong><div class="muted small">{{ round.number===1 ? '九宮格習慣養成｜最多 9 項' : '個人發展行動｜最多 5 項' }}</div></div>
+          </div>
+          <div class="round-setting-grid">
+            <div><label class="field-label">本輪名稱</label><input type="text" v-model.trim="round.title"></div>
+            <div><label class="field-label">開始日期</label><input type="date" v-model="round.startDate"></div>
+            <div><label class="field-label">結束日期</label><input type="date" v-model="round.endDate"></div>
+          </div>
+          <div class="round-permission-grid">
+            <label class="permission-option"><input type="checkbox" v-model="round.allowGoalEdit"><span><strong>開放設定／修改目標</strong><br><span class="small">可新增目標及調整目前做法</span></span></label>
+            <label class="permission-option"><input type="checkbox" v-model="round.allowLogEntry"><span><strong>開放完成紀錄</strong><br><span class="small">可新增或作廢完成紀錄</span></span></label>
+            <label class="permission-option"><input type="checkbox" v-model="round.allowMonthCheck"><span><strong>開放月份勾選</strong><br><span class="small">可確認各月是否持續完成</span></span></label>
+          </div>
+          <label v-if="round.number===1" class="permission-option guidance" style="margin-top:9px;"><input type="checkbox" v-model="round.courseGuidanceMode"><span><strong>課程指導中</strong><br><span class="small">學員可直接改寫九宮格內容；系統保留每次課堂調整，但不計入正式「改變發展目標」次數。</span></span></label>
+          <div v-if="round.startDate && round.endDate" class="period-strip">
+            <div v-for="(period,index) in splitRoundPeriods(round)" :key="index" class="period-chip"><strong>第 {{ index+1 }} 個月</strong>{{ formatDateOnly(period.start) }}～{{ formatDateOnly(period.end) }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-save">
+        <span class="muted small">儲存後會即時同步給所有學員。</span>
+        <button class="btn btn-primary" @click="saveTeacherSettings">儲存活動設定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增／更換發展目標 -->
+  <div v-if="goalModal.show" class="modal-overlay" @click.self="closeGoalModal">
+    <div class="modal">
+      <h2>{{ goalModal.mode==='create' ? '🌱 新增發展做法' : goalModal.mode==='guidance' ? '📝 課程指導中調整' : '🔄 改變發展目標' }}</h2>
+      <div v-if="goalModal.mode==='change'" class="notice notice-amber">原本的發展目標與完成紀錄都會完整保留；這次內容會建立成新的版本。</div>
+      <div v-if="goalModal.mode==='guidance'" class="notice notice-blue">目前為 Round 1「課程指導中」。您可以直接改寫內容；系統仍會保留調整前後版本，列入課程學習歷程，但不計入正式改變發展目標次數。</div>
+      <div class="form-grid">
+        <div v-if="goalModal.mode==='change'">
+          <label class="field-label">改變類型 <span class="required">*</span></label>
+          <select v-model="goalModal.changeType">
+            <option value="adjustment">調整做法（方向相同，換一個更可行的方法）</option>
+            <option value="direction">更換方向（改做另一個發展重點）</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">{{ goalModal.mode==='create' ? '我想持續做的發展做法' : goalModal.mode==='guidance' ? '調整後的發展做法' : '新的發展做法' }} <span class="required">*</span></label>
+          <textarea v-model.trim="goalModal.action" maxlength="500" placeholder="例如：每週五下班前，整理一次本週遇到的問題與解法。"></textarea>
+          <div class="field-help">建議寫得小而具體，讓自己知道什麼時候算有做到。</div>
+        </div>
+        <div>
+          <label class="field-label">執行節奏／頻率（選填）</label>
+          <input type="text" v-model.trim="goalModal.frequency" maxlength="120" placeholder="例如：每週一次、每次會議前、每天 10 分鐘">
+        </div>
+        <div v-if="goalModal.mode==='change'">
+          <label class="field-label">這次為什麼要調整（選填）</label>
+          <textarea v-model.trim="goalModal.reason" maxlength="300" placeholder="例如：原本的做法太大，改成更容易持續的小步驟。"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" @click="closeGoalModal">取消</button>
+        <button class="btn btn-primary" @click="saveGoalModal">{{ goalModal.mode==='create' ? '建立發展目標' : goalModal.mode==='guidance' ? '儲存課程中調整' : '儲存新版本' }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增完成紀錄 -->
+  <div v-if="logModal.show" class="modal-overlay" @click.self="closeLogModal">
+    <div class="modal">
+      <h2>＋新增完成紀錄</h2>
+      <div class="notice notice-blue"><strong>目前發展做法：</strong><br>{{ logModal.goalTitle }}</div>
+      <div class="form-grid">
+        <div><label class="field-label">完成日期 <span class="required">*</span></label><input type="date" v-model="logModal.date"></div>
+        <div><label class="field-label">這次做了什麼 <span class="required">*</span></label><textarea v-model.trim="logModal.action" maxlength="500" placeholder="簡單記下這次完成的內容即可。"></textarea></div>
+        <div class="two-col-form">
+          <div><label class="field-label">完成數量（選填）</label><input type="text" v-model.trim="logModal.quantity" maxlength="30" placeholder="例如：1、20"></div>
+          <div><label class="field-label">單位（選填）</label><input type="text" v-model.trim="logModal.unit" maxlength="30" placeholder="例如：次、分鐘、頁"></div>
+        </div>
+        <div><label class="field-label">補充說明（選填）</label><textarea v-model.trim="logModal.note" maxlength="500" placeholder="例如：這次遇到什麼狀況、下次想怎麼調整。"></textarea></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" @click="closeLogModal">取消</button>
+        <button class="btn btn-success" @click="saveLog">儲存完成紀錄</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 作廢完成紀錄 -->
+  <div v-if="voidModal.show" class="modal-overlay" @click.self="voidModal.show=false">
+    <div class="modal" style="max-width:500px;">
+      <h2>作廢完成紀錄</h2>
+      <div class="notice notice-red">作廢後原始內容仍會保留，但不再計入該月份的完成紀錄數。</div>
+      <label class="field-label">作廢原因 <span class="required">*</span></label>
+      <textarea v-model.trim="voidModal.reason" maxlength="300" placeholder="例如：日期填錯、重複新增。"></textarea>
+      <div class="modal-actions"><button class="btn btn-ghost" @click="voidModal.show=false">取消</button><button class="btn btn-danger" @click="confirmVoidLog">確認作廢</button></div>
+    </div>
+  </div>
+
+  <!-- 目標歷程 -->
+  <div v-if="historyModal.show" class="modal-overlay" @click.self="historyModal.show=false">
+    <div class="modal">
+      <h2>📚 發展目標版本歷程</h2>
+      <div class="timeline">
+        <div v-for="version in historyModal.versions" :key="version.id" class="version-row" :class="{current:version.id===historyModal.currentVersionId}">
+          <h4>{{ version.action }}</h4>
+          <div class="version-meta">
+            {{ version.id===historyModal.currentVersionId ? '目前使用中｜' : '' }}{{ versionTypeText(version.changeType) }}｜{{ formatDateTime(version.createdAt) }}
+            <template v-if="version.frequency"><br>執行節奏：{{ version.frequency }}</template>
+            <template v-if="version.reason"><br>調整原因：{{ version.reason }}</template>
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" @click="historyModal.show=false">關閉</button></div>
+    </div>
+  </div>
+
+  <!-- 學員詳細資料 -->
+  <div v-if="selectedParticipant" class="modal-overlay" @click.self="selectedParticipant=null">
+    <div class="modal modal-wide">
+      <div class="section-head">
+        <div><h2>👤 {{ selectedParticipant.profile?.name || '未填姓名' }}</h2><p>員工編號：{{ selectedParticipant.profile?.employeeNo || '—' }}｜建立：{{ formatDateTime(selectedParticipant.profile?.createdAt) }}</p></div>
+        <div class="toolbar"><button class="btn btn-soft" @click="openIdentityModal(selectedParticipant)">✏️ 修正姓名／員編</button><button class="btn btn-danger" @click="deleteParticipant(selectedParticipant)">🗑️ 刪除學員資料</button><button class="btn btn-ghost" @click="selectedParticipant=null">關閉</button></div>
+      </div>
+      <div v-for="round in roundArray" :key="round.id" class="detail-round">
+        <h3>Round {{ round.number }}｜{{ round.title }}</h3>
+        <template v-if="round.number===1">
+          <div class="bingo-summary">
+            <span class="summary-chip green">完成 {{ participantBingoCompletedCells(selectedParticipant) }}/9 格</span>
+            <span class="summary-chip amber">連成 {{ participantBingoLines(selectedParticipant) }} 條線</span>
+            <span class="summary-chip">正式改變 {{ participantRoundChangeCount(selectedParticipant,'round1') }} 次</span>
+            <span class="summary-chip">課程中調整 {{ participantRoundGuidanceCount(selectedParticipant,'round1') }} 次</span>
+          </div>
+          <div class="teacher-grid-nine-wrap">
+            <svg v-if="participantBingoLineDefs(selectedParticipant).length" class="bingo-svg" viewBox="0 0 300 300" preserveAspectRatio="none"><line v-for="line in participantBingoLineDefs(selectedParticipant)" :key="line.key" class="bingo-line" :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2"></line></svg>
+            <div class="teacher-grid-nine">
+              <button v-for="slot in participantRound1Slots(selectedParticipant)" :key="slot.index" type="button" class="teacher-grid-cell" :class="{'has-goal':slot.goal,complete:slot.goal && checkedMonthCount(slot.goal)===3,'empty-cell':!slot.goal}" @click="slot.goal && openTeacherGoalDetail('round1',slot.goal)">
+                <div class="grid-cell-number">{{ slot.index }}</div>
+                <template v-if="slot.goal"><div class="teacher-grid-title">{{ currentVersion(slot.goal)?.action || '—' }}</div><div class="teacher-grid-meta">月份 {{ checkedMonthCount(slot.goal) }}/3｜有效紀錄 {{ activeLogArray(slot.goal).length }} 筆<br>點擊查看完整明細</div></template>
+                <template v-else><strong>尚未設定</strong></template>
+              </button>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <div v-if="participantGoalArray(selectedParticipant,round.id).length">
+            <div v-for="goal in participantGoalArray(selectedParticipant,round.id)" :key="goal.id" class="detail-goal">
+              <div class="detail-goal-head">
+                <div>
+                  <div class="detail-goal-title">{{ currentVersion(goal)?.action || '—' }}</div>
+                  <div class="detail-meta">版本 {{ versionArray(goal).length }} 個｜正式改變 {{ goalOfficialChangeCount(goal) }} 次｜課程中調整 {{ goalGuidanceEditCount(goal) }} 次｜有效紀錄 {{ activeLogArray(goal).length }} 筆</div>
+                </div>
+                <button class="btn btn-soft btn-small" @click="openTeacherCorrection(selectedParticipant,round.id,goal)">✏️ 講師修正</button>
+              </div>
+              <div class="progress-bar"><div :style="{width:`${checkedMonthCount(goal)*33.333}%`}"></div></div>
+              <div class="small muted" style="margin-top:6px;">三個月勾選：{{ checkedMonthCount(goal) }}/3</div>
+              <div class="toolbar" style="margin-top:9px;"><button v-for="n in 3" :key="n" class="btn btn-small" :class="goal.monthlyChecks?.['month'+n]?.checked ? 'btn-soft-green' : 'btn-ghost'" @click="teacherToggleMonthCheck(selectedParticipant,round.id,goal,n-1)">{{ goal.monthlyChecks?.['month'+n]?.checked ? `清除第 ${n} 月勾選` : `補登第 ${n} 月勾選` }}</button></div>
+              <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:900;color:#0284c7;">查看版本與完成紀錄</summary><div class="timeline" style="margin-top:10px;"><div v-for="version in versionArray(goal)" :key="version.id" class="version-row" :class="{current:version.id===goal.currentVersionId}"><h4>{{ version.action }}</h4><div class="version-meta">{{ versionTypeText(version.changeType) }}｜{{ formatDateTime(version.createdAt) }}<template v-if="version.reason"><br>{{ version.reason }}</template></div></div></div><div class="log-list" style="margin-top:10px;"><div v-for="log in logArray(goal)" :key="log.id" class="log-row" :class="{voided:log.voided}"><div class="log-head"><div class="log-title">{{ log.action }}</div><div class="log-date">{{ formatDateOnly(log.date) }}</div></div><div class="log-meta"><template v-if="log.quantity || log.unit">數量：{{ log.quantity }} {{ log.unit }}<br></template>{{ log.note || '' }}<template v-if="log.voided"><br>已作廢：{{ log.voidReason || '未填原因' }}</template></div><button v-if="!log.voided" class="btn btn-ghost btn-small" style="margin-top:7px;" @click="openTeacherVoidLog(selectedParticipant.id,round.id,goal.id,log.id)">講師作廢此筆</button></div></div></details>
+            </div>
+          </div>
+          <div v-else class="no-data">本輪尚未建立發展目標。</div>
+        </template>
+      </div>
+    </div>
+  </div>
+
+  <!-- 講師查看九宮格單格完整明細 -->
+  <div v-if="teacherGoalDetail.show && teacherGoalDetailGoal && selectedParticipant" class="modal-overlay" @click.self="teacherGoalDetail.show=false">
+    <div class="modal">
+      <div class="section-head"><div><h2>九宮格第 {{ teacherGoalDetailGoal.slotIndex }} 格</h2><p>{{ selectedParticipant.profile?.name }}｜Round 1 完成明細</p></div><button class="btn btn-ghost" @click="teacherGoalDetail.show=false">關閉</button></div>
+      <div class="notice notice-blue"><strong>目前發展做法</strong><br>{{ currentVersion(teacherGoalDetailGoal)?.action || '—' }}<template v-if="currentVersion(teacherGoalDetailGoal)?.frequency"><br><span class="small">執行節奏：{{ currentVersion(teacherGoalDetailGoal)?.frequency }}</span></template></div>
+      <div class="bingo-summary"><span class="summary-chip green">月份 {{ checkedMonthCount(teacherGoalDetailGoal) }}/3</span><span class="summary-chip">有效紀錄 {{ activeLogArray(teacherGoalDetailGoal).length }} 筆</span><span class="summary-chip">正式改變 {{ goalOfficialChangeCount(teacherGoalDetailGoal) }} 次</span><span class="summary-chip amber">課程中調整 {{ goalGuidanceEditCount(teacherGoalDetailGoal) }} 次</span></div>
+      <div class="toolbar" style="margin-bottom:13px;"><button class="btn btn-soft btn-small" @click="openTeacherCorrection(selectedParticipant,'round1',teacherGoalDetailGoal)">✏️ 講師修正</button><button v-for="n in 3" :key="n" class="btn btn-small" :class="teacherGoalDetailGoal.monthlyChecks?.['month'+n]?.checked ? 'btn-soft-green' : 'btn-ghost'" @click="teacherToggleMonthCheck(selectedParticipant,'round1',teacherGoalDetailGoal,n-1)">{{ teacherGoalDetailGoal.monthlyChecks?.['month'+n]?.checked ? `清除第 ${n} 月勾選` : `補登第 ${n} 月勾選` }}</button></div>
+      <h3>發展做法歷程</h3><div class="timeline"><div v-for="version in versionArray(teacherGoalDetailGoal)" :key="version.id" class="version-row" :class="{current:version.id===teacherGoalDetailGoal.currentVersionId}"><h4>{{ version.action }}</h4><div class="version-meta">{{ versionTypeText(version.changeType) }}｜{{ formatDateTime(version.createdAt) }}<template v-if="version.frequency"><br>節奏：{{ version.frequency }}</template><template v-if="version.reason"><br>原因：{{ version.reason }}</template></div></div></div>
+      <h3 style="margin-top:18px;">完成紀錄</h3><div v-if="logArray(teacherGoalDetailGoal).length" class="log-list"><div v-for="log in logArray(teacherGoalDetailGoal)" :key="log.id" class="log-row" :class="{voided:log.voided}"><div class="log-head"><div class="log-title">{{ log.action }}</div><div class="log-date">{{ formatDateOnly(log.date) }}</div></div><div class="log-meta"><template v-if="log.quantity || log.unit">數量：{{ log.quantity }} {{ log.unit }}<br></template>{{ log.note || '' }}<template v-if="log.voided"><br>已作廢：{{ log.voidReason || '未填原因' }}</template></div><button v-if="!log.voided" class="btn btn-ghost btn-small" style="margin-top:7px;" @click="openTeacherVoidLog(selectedParticipant.id,'round1',teacherGoalDetailGoal.id,log.id)">講師作廢此筆</button></div></div><div v-else class="no-data">尚未留下完成紀錄。</div>
+    </div>
+  </div>
+
+  <!-- 講師修正學員姓名與員工編號 -->
+  <div v-if="identityModal.show" class="modal-overlay" @click.self="identityModal.show=false">
+    <div class="modal" style="max-width:520px;">
+      <h2>✏️ 修正學員基本資料</h2>
+      <div class="notice notice-amber">若員工編號有變更，系統會安全搬移此學員的全部四輪資料，並保留原編號與修正歷程。</div>
+      <div class="form-grid"><div><label class="field-label">姓名 <span class="required">*</span></label><input type="text" v-model.trim="identityModal.name" maxlength="50"></div><div><label class="field-label">員工編號 <span class="required">*</span></label><input type="text" v-model.trim="identityModal.employeeNo" maxlength="50"></div><div><label class="field-label">修正原因 <span class="required">*</span></label><textarea v-model.trim="identityModal.reason" maxlength="300" placeholder="例如：姓名誤植、員工編號輸入錯誤。"></textarea></div></div>
+      <div class="modal-actions"><button class="btn btn-ghost" @click="identityModal.show=false">取消</button><button class="btn btn-primary" @click="saveIdentityCorrection">儲存修正</button></div>
+    </div>
+  </div>
+
+  <!-- 講師修正目標 -->
+  <div v-if="correctionModal.show" class="modal-overlay" @click.self="correctionModal.show=false">
+    <div class="modal">
+      <h2>✏️ 講師修正誤植</h2>
+      <div class="notice notice-amber">此功能只用於修正打錯字或明顯誤植；不會計入學員「改變發展目標」次數，並會保留修正前後內容。</div>
+      <label class="field-label">修正後內容 <span class="required">*</span></label>
+      <textarea v-model.trim="correctionModal.newText" maxlength="500"></textarea>
+      <label class="field-label" style="margin-top:12px;">修正原因 <span class="required">*</span></label>
+      <textarea v-model.trim="correctionModal.reason" maxlength="300" placeholder="例如：學員誤植、錯別字修正。"></textarea>
+      <div class="modal-actions"><button class="btn btn-ghost" @click="correctionModal.show=false">取消</button><button class="btn btn-primary" @click="saveTeacherCorrection">儲存修正</button></div>
+    </div>
+  </div>
+
+  <!-- 管理登入 -->
+  <div v-if="currentView==='login'" class="login-wrap">
+    <div class="card login-box">
+      <div class="hero">🌱</div>
+      <h1>個人發展行動追蹤系統</h1>
+      <p>請輸入講師管理密碼，建立及管理不同專案／活動。</p>
+      <input type="password" v-model="loginPassword" @keydown.enter="adminLogin" placeholder="管理密碼">
+      <button class="btn btn-primary btn-block" @click="adminLogin">進入活動管理</button>
+    </div>
+  </div>
+
+  <!-- 活動大廳 -->
+  <main v-else-if="currentView==='lobby'" class="container">
+    <div class="topbar">
+      <div class="brand"><div class="brand-icon">🌱</div><div><h1>個人發展行動追蹤系統</h1><p>建立並分開管理不同專案／活動</p></div></div>
+    </div>
+    <div class="card">
+      <div class="create-row"><input type="text" v-model.trim="newActivityName" @keydown.enter="createActivity" placeholder="輸入新專案或活動名稱"><button class="btn btn-primary" @click="createActivity">＋建立活動</button></div>
+      <div class="activity-tabs"><button class="pill-tab" :class="{active:lobbyFilter==='active'}" @click="lobbyFilter='active'">進行中（{{ activeActivities.length }}）</button><button class="pill-tab" :class="{active:lobbyFilter==='archived'}" @click="lobbyFilter='archived'">已封存（{{ archivedActivities.length }}）</button></div>
+    </div>
+    <div v-if="filteredActivities.length" class="activity-grid">
+      <article v-for="activity in filteredActivities" :key="activity.id" class="card activity-card" :class="{archived:activity.archived}">
+        <h3>{{ activity.name }}</h3>
+        <div class="activity-meta">建立於 {{ formatDateTime(activity.createdAt) }}<br><span :class="['status-pill',activity.archived?'status-neutral':'status-open']" style="margin-top:7px;">{{ activity.archived ? '已封存' : '進行中' }}</span></div>
+        <div class="activity-actions">
+          <a :href="getActivityLink(activity.id,'teacher')" target="_blank" class="btn btn-primary btn-block">👨‍🏫 開啟講師端</a>
+          <button class="btn btn-warning btn-block" @click="copyActivityLink(activity.id)">🔗 複製學員連結</button>
+          <div class="inline-actions"><button class="btn btn-soft" @click="openRename(activity)">✏️ 重新命名</button><button class="btn btn-ghost" @click="duplicateActivity(activity)">📄 複製活動</button></div>
+          <button class="btn btn-secondary btn-block" @click="toggleArchive(activity)">{{ activity.archived ? '↩️ 解除封存' : '📦 封存活動' }}</button>
+          <button class="btn btn-danger btn-block" @click="deleteActivity(activity)">🗑️ 刪除活動</button>
+        </div>
+      </article>
+    </div>
+    <div v-else class="empty" style="margin-top:20px;">{{ lobbyFilter==='active' ? '目前還沒有進行中的活動，請先建立一個。' : '目前沒有已封存活動。' }}</div>
+  </main>
+
+  <!-- 講師端 -->
+  <main v-else-if="currentView==='teacher'" class="container">
+    <div class="topbar">
+      <div class="brand"><div class="brand-icon">🌱</div><div><h1>{{ activitySettings.title || '個人發展活動' }}</h1><p>講師後台｜四輪發展追蹤</p></div></div>
+      <div class="toolbar"><button class="btn btn-warning" @click="copyCurrentStudentLink">🔗 複製學員連結</button><button class="btn btn-ghost" @click="openTeacherSettings">⚙️ 活動設定</button></div>
+    </div>
+    <section class="teacher-hero">
+      <small>講師後台主要顯示</small><h2>Round {{ activitySettings.currentRound || 1 }}｜{{ currentRoundData.title }}</h2>
+      <p>{{ currentRoundData.startDate && currentRoundData.endDate ? `${formatDateOnly(currentRoundData.startDate)} ～ ${formatDateOnly(currentRoundData.endDate)}` : '尚未設定本輪執行期間' }}</p>
+      <div class="hero-pills"><span class="hero-pill">{{ activitySettings.isOpen===false ? '學員端已暫停' : '學員端開放中' }}</span><span class="hero-pill">可操作：{{ openRoundLabels || '尚未開放任何 Round' }}</span><span class="hero-pill">{{ participantArray.length }} 位學員</span><span class="hero-pill">{{ totalGoalCount }} 個發展目標</span></div>
+    </section>
+    <section class="metric-grid">
+      <div class="metric"><strong>{{ participantArray.length }}</strong><span>學員人數</span></div>
+      <div class="metric"><strong>{{ totalGoalCount }}</strong><span>發展目標數</span></div>
+      <div class="metric"><strong>{{ totalActiveLogCount }}</strong><span>有效完成紀錄</span></div>
+      <div class="metric"><strong>{{ totalMonthlyChecks }}</strong><span>月份完成勾選</span></div>
+      <div class="metric"><strong>{{ totalGoalChanges }}</strong><span>正式改變目標次數</span></div><div class="metric"><strong>{{ totalGuidanceEdits }}</strong><span>Round 1 課程中調整</span></div>
+    </section>
+    <div class="teacher-tabs"><button class="teacher-tab" :class="{active:teacherTab==='participants'}" @click="teacherTab='participants'">學員清單</button><button class="teacher-tab" :class="{active:teacherTab==='rounds'}" @click="teacherTab='rounds'">各輪整體進度</button><button class="teacher-tab" :class="{active:teacherTab==='export'}" @click="teacherTab='export'">資料匯出</button></div>
+
+    <section v-if="teacherTab==='participants'" class="card">
+      <div class="section-head"><div><h2>學員發展資料</h2><p>可依姓名或員工編號搜尋，點選「查看」開啟四輪完整明細。</p></div><input class="search-box" type="text" v-model.trim="participantSearch" placeholder="搜尋姓名或員工編號"></div>
+      <div v-if="filteredParticipants.length" class="table-wrap"><table><thead><tr><th>姓名</th><th>員工編號</th><th>目標數</th><th>有效紀錄</th><th>月份勾選</th><th>正式改變目標</th><th>課程中調整</th><th>Round 1 完成格</th><th>連線數</th><th>最後記錄</th><th>明細</th></tr></thead><tbody><tr v-for="participant in filteredParticipants" :key="participant.id"><td><strong>{{ participant.profile?.name }}</strong></td><td>{{ participant.profile?.employeeNo }}</td><td>{{ participantGoalCount(participant) }}</td><td>{{ participantLogCount(participant) }}</td><td>{{ participantCheckCount(participant) }}</td><td>{{ participantChangeCount(participant) }}</td><td>{{ participantGuidanceCount(participant) }}</td><td>{{ participantBingoCompletedCells(participant) }}/9</td><td>{{ participantBingoLines(participant) }}</td><td>{{ formatDateTime(participantLastActivity(participant)) }}</td><td><button class="btn btn-soft btn-small" @click="selectedParticipant=participant">查看</button></td></tr></tbody></table></div>
+      <div v-else class="empty">尚無符合條件的學員資料。</div>
+    </section>
+
+    <section v-else-if="teacherTab==='rounds'" class="card">
+      <div class="section-head"><div><h2>四輪整體進度</h2><p>依每位學員在各輪留下的目標、紀錄與三個月勾選統計。</p></div></div>
+      <div class="goal-grid">
+        <article v-for="round in roundArray" :key="round.id" class="card" style="box-shadow:none;border-top:5px solid var(--primary);">
+          <h3 style="margin-top:0;">Round {{ round.number }}｜{{ round.title }}</h3>
+          <div class="muted small">{{ round.startDate && round.endDate ? `${formatDateOnly(round.startDate)} ～ ${formatDateOnly(round.endDate)}` : '期間尚未設定' }}</div>
+          <div class="small" style="margin-top:9px;line-height:1.7;"><strong>學員權限：</strong>{{ roundPermissionText(round) }}<template v-if="round.number===1"><br><strong>課程指導模式：</strong>{{ round.courseGuidanceMode ? '開啟' : '關閉' }}</template></div>
+          <div style="height:1px;background:var(--line);margin:14px 0;"></div>
+          <p><strong>有建立目標：</strong>{{ roundParticipantCount(round.id) }} 人</p>
+          <p><strong>發展目標：</strong>{{ roundGoalCount(round.id) }} 項</p>
+          <p><strong>有效紀錄：</strong>{{ roundLogCount(round.id) }} 筆</p>
+          <p><strong>三月皆勾選：</strong>{{ roundFullyCompletedGoalCount(round.id) }} 項</p>
+          <p v-if="round.number===1"><strong>至少連成一線：</strong>{{ round1BingoParticipantCount }} 人</p>
+        </article>
+      </div>
+    </section>
+
+    <section v-else class="card">
+      <div class="section-head"><div><h2>資料匯出與備份</h2><p>Excel 適合分析與留存；JSON 保留完整原始結構，可作為系統備份。</p></div></div>
+      <div class="goal-grid">
+        <div class="notice notice-green"><strong>📊 匯出 Excel</strong><br>包含各輪開放權限、學員總覽、Round 1 九宮格、各輪進度、全部目標版本、課程中調整、完成紀錄、月份勾選及所有修正歷程。<div style="margin-top:12px;"><button class="btn btn-success" @click="exportExcel">匯出完整 Excel</button></div></div>
+        <div class="notice notice-blue"><strong>💾 匯出 JSON 完整備份</strong><br>保存 Firebase 中本活動的完整原始資料。<div style="margin-top:12px;"><button class="btn btn-primary" @click="exportJson">匯出 JSON 備份</button></div></div>
+      </div>
+      <div class="danger-zone" style="margin-top:18px;"><strong>資料安全提醒</strong><div class="small muted" style="margin-top:6px;line-height:1.6;">目前 Firebase Rules 為公開讀寫模式，適合測試與內部低敏感資料。若日後要提高保護，建議再搭配 Firebase Authentication 與限制式 Rules。</div></div>
+    </section>
+    <div class="copyright-footer">統一集團 企訓學院 製作 ® Made by Clyde</div>
+  </main>
+
+  <!-- 學員端：活動不存在 -->
+  <main v-else-if="currentView==='studentNotFound'" class="student-container">
+    <div class="card closed-box"><h2>找不到活動</h2><p class="muted">此連結可能已失效，請向講師索取新的活動連結。</p></div>
+    <div class="copyright-footer">統一集團 企訓學院 製作 ® Made by Clyde</div>
+  </main>
+
+  <!-- 學員端：登入 -->
+  <main v-else-if="currentView==='studentLogin'" class="student-container">
+    <div class="card student-hero"><h1>{{ activitySettings.title || '個人發展行動追蹤' }}</h1><p>{{ activitySettings.introText || '從一件小而可持續的事情開始，留下自己的完成紀錄。' }}</p></div>
+    <div v-if="activitySettings.isOpen===false" class="notice notice-red"><strong>活動目前暫停使用</strong><br>講師尚未開放本活動，請稍後再試。</div>
+    <div v-else class="card" style="max-width:520px;margin:0 auto;">
+      <h2 style="margin-top:0;">第一次進入／找回我的資料</h2>
+      <p class="muted" style="line-height:1.65;">第一次請輸入姓名與員工編號。這台裝置之後會直接讀取您的資料；換裝置時，再輸入相同資料即可找回。</p>
+      <div class="form-grid"><div><label class="field-label">姓名 <span class="required">*</span></label><input type="text" v-model.trim="studentLoginForm.name" maxlength="50" placeholder="請輸入姓名"></div><div><label class="field-label">員工編號 <span class="required">*</span></label><input type="text" v-model.trim="studentLoginForm.employeeNo" maxlength="50" @keydown.enter="studentLogin" placeholder="請輸入員工編號"></div><button class="btn btn-primary btn-block" @click="studentLogin">進入我的發展計畫</button></div>
+    </div>
+    <div class="copyright-footer">統一集團 企訓學院 製作 ® Made by Clyde</div>
+  </main>
+
+  <!-- 學員端：主畫面 -->
+  <main v-else-if="currentView==='student'" class="student-container">
+    <section class="card student-hero">
+      <h1>{{ activitySettings.title || '個人發展行動追蹤' }}</h1><p>{{ activitySettings.introText || '從一件小而可持續的事情開始，留下自己的完成紀錄。' }}</p>
+      <div class="student-userbar"><div><strong>{{ studentParticipant.profile?.name }}</strong><span class="muted">｜員工編號 {{ studentParticipant.profile?.employeeNo }}</span></div><button class="btn btn-ghost btn-small" @click="switchStudent">切換學員</button></div>
+    </section>
+    <div v-if="activitySettings.isOpen===false" class="notice notice-red"><strong>活動目前暫停使用</strong><br>您仍可查看既有資料，但暫時無法新增或變更內容。</div>
+    <nav class="round-nav"><button v-for="round in roundArray" :key="round.id" class="round-nav-btn" :class="{active:selectedRoundKey===round.id,current:isRoundOpen(round)}" @click="selectedRoundKey=round.id"><span>Round {{ round.number }}</span><small>{{ isRoundOpen(round) ? roundAccessShortText(round) : roundStatusText(round) }}</small></button></nav>
+    <section class="round-banner">
+      <h2>Round {{ selectedRound.number }}｜{{ selectedRound.title }}</h2>
+      <p>{{ selectedRound.number===1 ? '在九宮格中寫下最多九個想持續做的小改變；每格三個月都有持續，才算完成一格並可連線。' : '本輪可建立 1～5 個發展做法，持續留下完成紀錄，並在每個月份確認自己有持續。' }}</p>
+      <p><strong>執行期間：</strong>{{ selectedRound.startDate && selectedRound.endDate ? `${formatDateOnly(selectedRound.startDate)} ～ ${formatDateOnly(selectedRound.endDate)}` : '講師尚未設定' }}</p>
+      <div class="period-strip"><div v-for="(period,index) in splitRoundPeriods(selectedRound)" :key="index" class="period-chip"><strong>第 {{ index+1 }} 個月</strong>{{ period.start ? `${formatDateOnly(period.start)}～${formatDateOnly(period.end)}` : '期間待設定' }}</div></div>
+    </section>
+    <div v-if="!canEditSelectedRound" class="notice notice-amber"><strong>此 Round 目前為查看模式</strong><br>講師尚未開放本輪的目標編修、完成紀錄或月份勾選；您仍可查看既有資料與歷程。</div>
+    <div v-else class="notice notice-blue"><strong>本輪目前可操作：</strong>{{ roundPermissionText(selectedRound) }}<template v-if="selectedRound.number===1 && selectedRound.courseGuidanceMode"><br><strong>課程指導中：</strong>修改九宮格會保留課堂調整歷程，但不計入正式改變目標次數。</template></div>
+
+    <!-- Round 1 九宮格 -->
+    <section v-if="selectedRound.number===1">
+      <div class="bingo-summary"><span class="summary-chip green">已完成 {{ bingoCompletedCells }}/9 格</span><span class="summary-chip amber">已連成 {{ bingoLines.length }} 條線</span><span class="summary-chip">正式改變 {{ selectedRoundChangeCount }} 次</span><span class="summary-chip">課程中調整 {{ selectedRoundGuidanceCount }} 次</span></div>
+      <div class="grid-nine-wrap">
+        <svg v-if="bingoLines.length" class="bingo-svg" viewBox="0 0 300 300" preserveAspectRatio="none"><line v-for="line in bingoLines" :key="line.key" class="bingo-line" :x1="line.x1" :y1="line.y1" :x2="line.x2" :y2="line.y2"></line></svg>
+        <div class="grid-nine">
+          <div v-for="slot in round1Slots" :key="slot.index" class="grid-cell" :class="{complete:slot.goal && checkedMonthCount(slot.goal)===3,'empty-cell':!slot.goal}">
+            <template v-if="slot.goal">
+              <div class="grid-cell-number">{{ slot.index }}</div><div class="grid-cell-title">{{ currentVersion(slot.goal)?.action }}</div><div class="grid-cell-progress">{{ checkedMonthCount(slot.goal) }}/3 個月完成｜{{ activeLogArray(slot.goal).length }} 筆紀錄</div>
+              <div class="grid-cell-actions"><button class="btn btn-success btn-small" :disabled="!canAddLogsSelectedRound" @click="openLogModal(selectedRound.id,slot.goal)">＋紀錄</button><button class="btn btn-soft-amber btn-small" :disabled="!canEditGoalsSelectedRound" @click="openChangeGoal(selectedRound.id,slot.goal)">{{ selectedRound.courseGuidanceMode ? '課程中修改' : '改變目標' }}</button><button class="btn btn-ghost btn-small" @click="openHistory(slot.goal)">歷程</button></div>
+            </template>
+            <template v-else><div class="grid-cell-number">{{ slot.index }}</div><strong>這一格尚未設定</strong><span class="small muted" style="margin:7px 0 11px;">寫下一件小而可持續的發展做法</span><button class="btn btn-primary btn-small" :disabled="!canEditGoalsSelectedRound" @click="openCreateGoal(selectedRound.id,slot.index)">＋填寫這一格</button></template>
+          </div>
+        </div>
+      </div>
+      <div v-for="slot in round1Slots.filter(x=>x.goal)" :key="'detail_'+slot.index" style="margin-top:14px;"><goal-detail :goal="slot.goal"></goal-detail></div>
+    </section>
+
+    <!-- Round 2~4 -->
+    <section v-else>
+      <div class="bingo-summary"><span class="summary-chip green">已建立 {{ selectedRoundGoals.length }}/5 項</span><span class="summary-chip">三月皆完成 {{ selectedRoundFullyCompleted }}/{{ selectedRoundGoals.length || 0 }} 項</span><span class="summary-chip amber">正式改變 {{ selectedRoundChangeCount }} 次</span></div>
+      <div class="goal-grid">
+        <goal-detail v-for="goal in selectedRoundGoals" :key="goal.id" :goal="goal"></goal-detail>
+        <button v-if="selectedRoundGoals.length<5" class="card add-goal-card" :disabled="!canEditGoalsSelectedRound" @click="openCreateGoal(selectedRound.id,null)"><div><strong>＋新增發展做法</strong><span>本輪最多可建立 5 項</span></div></button>
+      </div>
+    </section>
+    <div class="copyright-footer">統一集團 企訓學院 製作 ® Made by Clyde</div>
+  </main>
+</div>
+
+<script>
+const { createApp } = Vue;
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA97EbUfh620b-Bz2eFeSifptEOBkL_v7U",
+  authDomain: "training-76bd2.firebaseapp.com",
+  databaseURL: "https://training-76bd2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "training-76bd2",
+  storageBucket: "training-76bd2.firebasestorage.app",
+  messagingSenderId: "1032641306025",
+  appId: "1:1032641306025:web:a25f74c2bef92268dcf8b8",
+  measurementId: "G-EQ84DXPD97"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const ADMIN_PASSWORD = '73251209';
+const ADMIN_AUTH_KEY = 'development_admin_authenticated_until';
+const ADMIN_AUTH_HOURS = 12;
+const ROUND_KEYS = ['round1','round2','round3','round4'];
+const clone = value => JSON.parse(JSON.stringify(value ?? null));
+const nowDateInput = () => {
+  const d = new Date();
+  const offset = d.getTimezoneOffset();
+  return new Date(d.getTime() - offset * 60000).toISOString().slice(0,10);
+};
+const defaultRounds = () => ({
+  round1:{ id:'round1',number:1,title:'九宮格習慣養成',startDate:'',endDate:'',mode:'grid',maxGoals:9,courseGuidanceMode:false },
+  round2:{ id:'round2',number:2,title:'第二輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5 },
+  round3:{ id:'round3',number:3,title:'第三輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5 },
+  round4:{ id:'round4',number:4,title:'第四輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5 }
+});
+const normalizeSettings = value => ({
+  title:value?.title || '個人發展行動追蹤',
+  introText:value?.introText || '從一件小而可持續的事情開始，留下自己的完成紀錄。',
+  currentRound:Number(value?.currentRound) || 1,
+  isOpen:value?.isOpen !== false,
+  requireLogBeforeCheck:value?.requireLogBeforeCheck !== false,
+  createdAt:value?.createdAt || Date.now()
+});
+const normalizeRounds = value => {
+  const defaults = defaultRounds();
+  ROUND_KEYS.forEach(key => { if (value?.[key]) defaults[key] = { ...defaults[key], ...value[key], id:key, number:Number(value[key].number)||defaults[key].number }; });
+  return defaults;
+};
+
+const app = createApp({
+  data() {
+    return {
+      isLoading:true,
+      toastMsg:'',
+      currentView:'login',
+      loginPassword:'',
+      activityId:'',
+      activities:[],
+      newActivityName:'',
+      lobbyFilter:'active',
+      renameBox:{show:false,id:'',name:''},
+      confirmBox:{show:false,message:'',action:null},
+      activitySettings:normalizeSettings({}),
+      rounds:normalizeRounds({}),
+      participants:{},
+      listeners:[],
+      teacherTab:'participants',
+      participantSearch:'',
+      showTeacherSettings:false,
+      settingsDraft:normalizeSettings({}),
+      roundDrafts:normalizeRounds({}),
+      selectedParticipant:null,
+      studentLoginForm:{name:'',employeeNo:''},
+      participantId:'',
+      studentParticipant:{profile:{},roundData:{}},
+      selectedRoundKey:'round1',
+      goalModal:{show:false,mode:'create',roundKey:'',goalId:'',slotIndex:null,action:'',frequency:'',changeType:'adjustment',reason:''},
+      logModal:{show:false,roundKey:'',goalId:'',goalTitle:'',date:nowDateInput(),action:'',quantity:'',unit:'',note:''},
+      voidModal:{show:false,roundKey:'',goalId:'',logId:'',reason:''},
+      historyModal:{show:false,versions:[],currentVersionId:''},
+      correctionModal:{show:false,participantId:'',roundKey:'',goalId:'',versionId:'',oldText:'',newText:'',reason:''},
+      identityModal:{show:false,participantId:'',name:'',employeeNo:'',oldName:'',oldEmployeeNo:'',reason:''},
+      teacherGoalDetail:{show:false,roundKey:'',goalId:''}
+    };
+  },
+  computed: {
+    activeActivities() { return this.activities.filter(x=>!x.archived); },
+    archivedActivities() { return this.activities.filter(x=>!!x.archived); },
+    filteredActivities() { return this.lobbyFilter==='archived' ? this.archivedActivities : this.activeActivities; },
+    roundArray() { return ROUND_KEYS.map(key=>this.rounds[key]).filter(Boolean).sort((a,b)=>a.number-b.number); },
+    roundDraftArray() { return ROUND_KEYS.map(key=>this.roundDrafts[key]).filter(Boolean).sort((a,b)=>a.number-b.number); },
+    currentRoundData() { return this.rounds[`round${Number(this.activitySettings.currentRound)||1}`] || this.rounds.round1; },
+    openRoundLabels() { return this.roundArray.filter(r=>this.isRoundOpen(r)).map(r=>`R${r.number}`).join('、'); },
+    participantArray() { return Object.keys(this.participants||{}).map(id=>({id,...this.participants[id]})).sort((a,b)=>String(a.profile?.name||'').localeCompare(String(b.profile?.name||''),'zh-Hant')); },
+    filteredParticipants() {
+      const q = this.participantSearch.trim().toLowerCase();
+      if (!q) return this.participantArray;
+      return this.participantArray.filter(p=>`${p.profile?.name||''} ${p.profile?.employeeNo||''}`.toLowerCase().includes(q));
+    },
+    totalGoalCount() { return this.participantArray.reduce((s,p)=>s+this.participantGoalCount(p),0); },
+    totalActiveLogCount() { return this.participantArray.reduce((s,p)=>s+this.participantLogCount(p),0); },
+    totalMonthlyChecks() { return this.participantArray.reduce((s,p)=>s+this.participantCheckCount(p),0); },
+    totalGoalChanges() { return this.participantArray.reduce((s,p)=>s+this.participantChangeCount(p),0); },
+    totalGuidanceEdits() { return this.participantArray.reduce((s,p)=>s+this.participantGuidanceCount(p),0); },
+    round1BingoParticipantCount() { return this.participantArray.filter(p=>this.participantBingoLines(p)>0).length; },
+    selectedRound() { return this.rounds[this.selectedRoundKey] || this.rounds.round1; },
+    canEditGoalsSelectedRound() { return this.activitySettings.isOpen !== false && this.roundPermission(this.selectedRound,'allowGoalEdit'); },
+    canAddLogsSelectedRound() { return this.activitySettings.isOpen !== false && this.roundPermission(this.selectedRound,'allowLogEntry'); },
+    canCheckSelectedRound() { return this.activitySettings.isOpen !== false && this.roundPermission(this.selectedRound,'allowMonthCheck'); },
+    canEditSelectedRound() { return this.canEditGoalsSelectedRound || this.canAddLogsSelectedRound || this.canCheckSelectedRound; },
+    selectedRoundGoals() { return this.studentGoalArray(this.selectedRoundKey); },
+    selectedRoundChangeCount() { return this.selectedRoundGoals.reduce((s,g)=>s+this.goalOfficialChangeCount(g),0); },
+    selectedRoundGuidanceCount() { return this.selectedRoundGoals.reduce((s,g)=>s+this.goalGuidanceEditCount(g),0); },
+    selectedRoundFullyCompleted() { return this.selectedRoundGoals.filter(g=>this.checkedMonthCount(g)===3).length; },
+    round1Slots() {
+      const map = {};
+      this.studentGoalArray('round1').forEach(g=>{ map[Number(g.slotIndex)] = g; });
+      return Array.from({length:9},(_,i)=>({index:i+1,goal:map[i+1]||null}));
+    },
+    bingoCompletedCells() { return this.round1Slots.filter(x=>x.goal && this.checkedMonthCount(x.goal)===3).length; },
+    teacherGoalDetailGoal() { return this.teacherGoalDetail.show && this.selectedParticipant ? this.participantGoalArray(this.selectedParticipant,this.teacherGoalDetail.roundKey).find(g=>g.id===this.teacherGoalDetail.goalId) || null : null; },
+    bingoLines() {
+      const complete = new Set(this.round1Slots.filter(x=>x.goal && this.checkedMonthCount(x.goal)===3).map(x=>x.index));
+      const defs = [
+        {key:'r1',cells:[1,2,3],x1:50,y1:50,x2:250,y2:50},{key:'r2',cells:[4,5,6],x1:50,y1:150,x2:250,y2:150},{key:'r3',cells:[7,8,9],x1:50,y1:250,x2:250,y2:250},
+        {key:'c1',cells:[1,4,7],x1:50,y1:50,x2:50,y2:250},{key:'c2',cells:[2,5,8],x1:150,y1:50,x2:150,y2:250},{key:'c3',cells:[3,6,9],x1:250,y1:50,x2:250,y2:250},
+        {key:'d1',cells:[1,5,9],x1:50,y1:50,x2:250,y2:250},{key:'d2',cells:[3,5,7],x1:250,y1:50,x2:50,y2:250}
+      ];
+      return defs.filter(line=>line.cells.every(n=>complete.has(n)));
+    }
+  },
+  mounted() {
+    const params = new URLSearchParams(location.search);
+    const activityId = params.get('activity');
+    const role = params.get('role');
+    if (!activityId) {
+      this.currentView='login'; this.isLoading=false; return;
+    }
+    this.activityId=activityId;
+    if (role==='teacher') {
+      if (this.hasAdminAuthentication()) { this.currentView='teacher'; this.attachTeacherActivity(); }
+      else { this.currentView='login'; this.isLoading=false; }
+    } else {
+      this.currentView='studentLogin';
+      this.attachPublicActivity().then(()=>this.tryRestoreStudent());
+    }
+  },
+  beforeUnmount() { this.detachAll(); },
+  methods: {
+    showToast(msg) { this.toastMsg=msg; clearTimeout(this._toastTimer); this._toastTimer=setTimeout(()=>this.toastMsg='',3400); },
+    askConfirm(message,action) { this.confirmBox={show:true,message,action}; },
+    runConfirm() { const action=this.confirmBox.action; this.confirmBox={show:false,message:'',action:null}; if(action) action(); },
+    attach(ref,event,callback) { ref.on(event,callback); this.listeners.push({ref,event,callback}); },
+    detachAll() { this.listeners.forEach(({ref,event,callback})=>ref.off(event,callback)); this.listeners=[]; },
+    attachPublicActivity() {
+      this.isLoading=true;
+      return db.ref(`developmentActivities/${this.activityId}/settings`).once('value').then(snap=>{
+        if (!snap.exists()) { this.currentView='studentNotFound'; this.isLoading=false; return false; }
+        this.activitySettings=normalizeSettings(snap.val());
+        this.attach(db.ref(`developmentActivities/${this.activityId}/settings`),'value',s=>{ if(s.exists()) this.activitySettings=normalizeSettings(s.val()); });
+        this.attach(db.ref(`developmentActivities/${this.activityId}/rounds`),'value',s=>{ this.rounds=normalizeRounds(s.val()||{}); });
+        this.isLoading=false; return true;
+      }).catch(err=>{ this.isLoading=false; this.showToast('❌ 無法載入活動：'+err.message); return false; });
+    },
+    attachTeacherActivity() {
+      this.detachAll(); this.isLoading=true;
+      const root=db.ref(`developmentActivities/${this.activityId}`);
+      this.attach(root.child('settings'),'value',s=>{ if(!s.exists()){this.showToast('找不到活動');return;} this.activitySettings=normalizeSettings(s.val()); this.isLoading=false; });
+      this.attach(root.child('rounds'),'value',s=>{ this.rounds=normalizeRounds(s.val()||{}); });
+      this.attach(root.child('participants'),'value',s=>{ this.participants=s.val()||{}; });
+    },
+    hasAdminAuthentication(){return Number(localStorage.getItem(ADMIN_AUTH_KEY)||0)>Date.now();},
+    rememberAdminAuthentication(){localStorage.setItem(ADMIN_AUTH_KEY,String(Date.now()+ADMIN_AUTH_HOURS*60*60*1000));},
+    adminLogin() {
+      if (this.loginPassword!==ADMIN_PASSWORD) { this.loginPassword=''; return this.showToast('❌ 密碼錯誤，請重新輸入'); }
+      this.rememberAdminAuthentication();
+      if(this.activityId){this.currentView='teacher';this.loginPassword='';this.attachTeacherActivity();return;}
+      this.currentView='lobby'; this.loginPassword=''; this.isLoading=true;
+      const ref=db.ref('developmentActivitiesList');
+      this.attach(ref,'value',snap=>{ const v=snap.val()||{}; this.activities=Object.keys(v).map(id=>({id,...v[id]})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); this.isLoading=false; });
+    },
+    teacherLogin() {
+      if (this.loginPassword!==ADMIN_PASSWORD) { this.loginPassword=''; return this.showToast('❌ 密碼錯誤，請重新輸入'); }
+      this.rememberAdminAuthentication();this.loginPassword='';this.currentView='teacher';this.attachTeacherActivity();
+    },
+    async createActivity() {
+      const name=this.newActivityName.trim(); if(!name) return this.showToast('請先輸入活動名稱');
+      const listRef=db.ref('developmentActivitiesList').push(); const id=listRef.key; const now=Date.now();
+      const settings=normalizeSettings({title:name,createdAt:now,currentRound:1,isOpen:true,requireLogBeforeCheck:true});
+      const rounds=defaultRounds();rounds.round1.allowGoalEdit=true;rounds.round1.allowLogEntry=true;rounds.round1.allowMonthCheck=true;ROUND_KEYS.slice(1).forEach(k=>{rounds[k].allowGoalEdit=false;rounds[k].allowLogEntry=false;rounds[k].allowMonthCheck=false;});
+      const updates={}; updates[`developmentActivitiesList/${id}`]={name,createdAt:now,archived:false}; updates[`developmentActivities/${id}/settings`]=settings; updates[`developmentActivities/${id}/rounds`]=rounds;
+      try { await db.ref().update(updates); this.newActivityName=''; this.showToast('✅ 活動建立完成'); } catch(err){ this.showToast('❌ 建立失敗：'+err.message); }
+    },
+    getActivityLink(id,role) { const url=new URL(location.href); url.searchParams.set('activity',id); if(role==='teacher') url.searchParams.set('role','teacher'); else url.searchParams.delete('role'); return url.href; },
+    async copyText(text) { try{await navigator.clipboard.writeText(text);}catch(_){const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();} this.showToast('✅ 連結已複製'); },
+    copyActivityLink(id){this.copyText(this.getActivityLink(id,'student'));},
+    copyCurrentStudentLink(){this.copyText(this.getActivityLink(this.activityId,'student'));},
+    openRename(activity){this.renameBox={show:true,id:activity.id,name:activity.name};},
+    async confirmRename(){const name=this.renameBox.name.trim();if(!name)return this.showToast('活動名稱不能空白');const id=this.renameBox.id;await db.ref().update({[`developmentActivitiesList/${id}/name`]:name,[`developmentActivities/${id}/settings/title`]:name});this.renameBox.show=false;this.showToast('✅ 已重新命名');},
+    duplicateActivity(activity){this.askConfirm(`確定複製「${activity.name}」嗎？會複製活動與四輪期間設定，但不會複製任何學員資料。`,async()=>{const snap=await db.ref(`developmentActivities/${activity.id}`).once('value');const source=snap.val()||{};const id=db.ref('developmentActivitiesList').push().key;const name=`${activity.name}（複製）`;const now=Date.now();await db.ref().update({[`developmentActivitiesList/${id}`]:{name,createdAt:now,archived:false},[`developmentActivities/${id}/settings`]:{...normalizeSettings(source.settings||{}),title:name,createdAt:now},[`developmentActivities/${id}/rounds`]:normalizeRounds(source.rounds||{})});this.showToast('✅ 活動已複製');});},
+    toggleArchive(activity){const archived=!activity.archived;db.ref(`developmentActivitiesList/${activity.id}/archived`).set(archived).then(()=>this.showToast(archived?'📦 活動已封存':'✅ 已解除封存'));},
+    deleteActivity(activity){this.askConfirm(`確定刪除「${activity.name}」？所有學員、目標、完成紀錄與歷程都會一併刪除，且無法復原。`,async()=>{await db.ref().update({[`developmentActivitiesList/${activity.id}`]:null,[`developmentActivities/${activity.id}`]:null});this.showToast('🗑️ 活動已刪除');});},
+    openTeacherSettings(){this.settingsDraft=clone(this.activitySettings);this.roundDrafts=normalizeRounds(clone(this.rounds));this.roundDraftArray.forEach(r=>{r.allowGoalEdit=this.roundPermission(r,'allowGoalEdit');r.allowLogEntry=this.roundPermission(r,'allowLogEntry');r.allowMonthCheck=this.roundPermission(r,'allowMonthCheck');if(r.number===1)r.courseGuidanceMode=!!r.courseGuidanceMode;});this.showTeacherSettings=true;},
+    async saveTeacherSettings(){
+      const title=(this.settingsDraft.title||'').trim(); if(!title)return this.showToast('活動名稱不能空白');
+      for(const round of this.roundDraftArray){if(round.startDate&&round.endDate&&round.startDate>round.endDate)return this.showToast(`Round ${round.number} 的結束日期不能早於開始日期`);}
+      const cleanSettings=normalizeSettings({...this.settingsDraft,title}); const cleanRounds=normalizeRounds(this.roundDrafts);ROUND_KEYS.forEach(k=>{cleanRounds[k].allowGoalEdit=!!cleanRounds[k].allowGoalEdit;cleanRounds[k].allowLogEntry=!!cleanRounds[k].allowLogEntry;cleanRounds[k].allowMonthCheck=!!cleanRounds[k].allowMonthCheck;if(k==='round1')cleanRounds[k].courseGuidanceMode=!!cleanRounds[k].courseGuidanceMode;});
+      try{await db.ref().update({[`developmentActivities/${this.activityId}/settings`]:cleanSettings,[`developmentActivities/${this.activityId}/rounds`]:cleanRounds,[`developmentActivitiesList/${this.activityId}/name`]:title});this.showTeacherSettings=false;this.showToast('✅ 活動設定已儲存');}catch(err){this.showToast('❌ 儲存失敗：'+err.message);}
+    },
+    normalizeName(v){return String(v||'').trim().replace(/\s+/g,' ');},
+    normalizeEmployee(v){return String(v||'').trim().replace(/\s+/g,'').toUpperCase();},
+    stableHash(text){let h=2166136261;for(let i=0;i<text.length;i++){h^=text.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36);},
+    participantKey(employeeNo){return `p_${this.stableHash(this.normalizeEmployee(employeeNo))}`;},
+    studentStorageKey(){return `development_participant_${this.activityId}`;},
+    async resolveParticipantId(id,depth=0,visited=new Set()){if(!id||depth>8||visited.has(id))return '';visited.add(id);const participant=await db.ref(`developmentActivities/${this.activityId}/participants/${id}`).once('value');if(participant.exists())return id;const aliasSnap=await db.ref(`developmentActivities/${this.activityId}/participantAliases/${id}`).once('value');const alias=aliasSnap.val();const nextId=typeof alias==='string'?alias:alias?.newParticipantId;return nextId?this.resolveParticipantId(nextId,depth+1,visited):'';},
+    tryRestoreStudent(){
+      if(this.currentView==='studentNotFound')return;
+      const id=localStorage.getItem(this.studentStorageKey()); if(!id){this.currentView='studentLogin';return;}
+      this.isLoading=true;this.resolveParticipantId(id).then(resolvedId=>{if(resolvedId){localStorage.setItem(this.studentStorageKey(),resolvedId);this.participantId=resolvedId;this.currentView='student';this.attachStudentParticipant();return;}localStorage.removeItem(this.studentStorageKey());this.currentView='studentLogin';this.isLoading=false;}).catch(()=>{this.currentView='studentLogin';this.isLoading=false;});
+    },
+    async studentLogin(){
+      if(this.activitySettings.isOpen===false)return this.showToast('活動目前尚未開放');
+      const name=this.normalizeName(this.studentLoginForm.name);const employeeNo=this.normalizeEmployee(this.studentLoginForm.employeeNo);if(!name||!employeeNo)return this.showToast('請完整填寫姓名與員工編號');
+      const id=this.participantKey(employeeNo);const ref=db.ref(`developmentActivities/${this.activityId}/participants/${id}`);this.isLoading=true;
+      try{
+        const snap=await ref.once('value');
+        if(snap.exists()){
+          const existing=snap.val();
+          if(this.normalizeEmployee(existing.profile?.employeeNo)!==employeeNo||this.normalizeName(existing.profile?.name)!==name){this.isLoading=false;return this.showToast('姓名或員工編號與既有資料不一致，請確認後再試');}
+          await ref.child('profile/lastLoginAt').set(Date.now());
+        }else{
+          await ref.set({profile:{name,employeeNo,createdAt:Date.now(),lastLoginAt:Date.now(),updatedAt:Date.now()},roundData:{},audit:{}});
+        }
+        localStorage.setItem(this.studentStorageKey(),id);this.participantId=id;this.studentLoginForm={name:'',employeeNo:''};this.currentView='student';this.attachStudentParticipant();
+      }catch(err){this.isLoading=false;this.showToast('❌ 無法進入：'+err.message);}
+    },
+    attachStudentParticipant(){
+      const listeningId=this.participantId;const ref=db.ref(`developmentActivities/${this.activityId}/participants/${listeningId}`);
+      this.attach(ref,'value',snap=>{if(!snap.exists()){this.resolveParticipantId(listeningId).then(resolvedId=>{if(resolvedId&&resolvedId!==listeningId){localStorage.setItem(this.studentStorageKey(),resolvedId);this.participantId=resolvedId;this.attachStudentParticipant();return;}localStorage.removeItem(this.studentStorageKey());this.currentView='studentLogin';this.studentParticipant={profile:{},roundData:{}};this.isLoading=false;});}else{this.studentParticipant={profile:{},roundData:{},...snap.val()};this.isLoading=false;}});
+    },
+    switchStudent(){this.askConfirm('確定要在這台裝置切換另一位學員嗎？目前資料會保留在雲端。',()=>{localStorage.removeItem(this.studentStorageKey());this.participantId='';this.studentParticipant={profile:{},roundData:{}};this.detachAll();this.currentView='studentLogin';this.attachPublicActivity();});},
+    roundPermission(round,field){if(!round)return false;if(typeof round[field]==='boolean')return round[field];return Number(this.activitySettings.currentRound)===Number(round.number);},
+    isRoundOpen(round){return this.activitySettings.isOpen!==false && (this.roundPermission(round,'allowGoalEdit')||this.roundPermission(round,'allowLogEntry')||this.roundPermission(round,'allowMonthCheck'));},
+    roundPermissionText(round){const items=[];if(this.roundPermission(round,'allowGoalEdit'))items.push('設定／修改目標');if(this.roundPermission(round,'allowLogEntry'))items.push('完成紀錄');if(this.roundPermission(round,'allowMonthCheck'))items.push('月份勾選');return items.join('、')||'僅可查看';},
+    roundAccessShortText(round){const count=['allowGoalEdit','allowLogEntry','allowMonthCheck'].filter(k=>this.roundPermission(round,k)).length;return count===3?'全部可操作':count===0?'查看模式':`${count} 項可操作`;},
+    studentGoalArray(roundKey){const goals=this.studentParticipant?.roundData?.[roundKey]?.goals||{};return Object.keys(goals).map(id=>({id,...goals[id]})).sort((a,b)=>(Number(a.slotIndex)||999)-(Number(b.slotIndex)||999)||(a.createdAt||0)-(b.createdAt||0));},
+    participantGoalArray(participant,roundKey){const goals=participant?.roundData?.[roundKey]?.goals||{};return Object.keys(goals).map(id=>({id,...goals[id]})).sort((a,b)=>(Number(a.slotIndex)||999)-(Number(b.slotIndex)||999)||(a.createdAt||0)-(b.createdAt||0));},
+    versionArray(goal){const versions=goal?.versions||{};return Object.keys(versions).map(id=>({id,...versions[id]})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));},
+    currentVersion(goal){if(!goal)return null;const v=goal.versions?.[goal.currentVersionId];return v?{id:goal.currentVersionId,...v}:this.versionArray(goal).slice(-1)[0]||null;},
+    logArray(goal){const logs=goal?.logs||{};return Object.keys(logs).map(id=>({id,...logs[id]})).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||(b.createdAt||0)-(a.createdAt||0));},
+    activeLogArray(goal){return this.logArray(goal).filter(x=>!x.voided);},
+    goalOfficialChangeCount(goal){return this.versionArray(goal).filter(v=>v.changeType==='adjustment'||v.changeType==='direction').length;},
+    goalGuidanceEditCount(goal){return this.versionArray(goal).filter(v=>v.changeType==='course_guidance').length;},
+    checkedMonthCount(goal){return [1,2,3].filter(n=>goal?.monthlyChecks?.[`month${n}`]?.checked).length;},
+    participantRound1Slots(participant){const map={};this.participantGoalArray(participant,'round1').forEach(g=>map[Number(g.slotIndex)]=g);return Array.from({length:9},(_,i)=>({index:i+1,goal:map[i+1]||null}));},
+    participantBingoLineDefs(participant){const complete=new Set(this.participantGoalArray(participant,'round1').filter(g=>this.checkedMonthCount(g)===3).map(g=>Number(g.slotIndex)));const defs=[{key:'r1',cells:[1,2,3],x1:50,y1:50,x2:250,y2:50},{key:'r2',cells:[4,5,6],x1:50,y1:150,x2:250,y2:150},{key:'r3',cells:[7,8,9],x1:50,y1:250,x2:250,y2:250},{key:'c1',cells:[1,4,7],x1:50,y1:50,x2:50,y2:250},{key:'c2',cells:[2,5,8],x1:150,y1:50,x2:150,y2:250},{key:'c3',cells:[3,6,9],x1:250,y1:50,x2:250,y2:250},{key:'d1',cells:[1,5,9],x1:50,y1:50,x2:250,y2:250},{key:'d2',cells:[3,5,7],x1:250,y1:50,x2:50,y2:250}];return defs.filter(line=>line.cells.every(n=>complete.has(n)));},
+    openTeacherGoalDetail(roundKey,goal){this.teacherGoalDetail={show:true,roundKey,goalId:goal.id};},
+    openCreateGoal(roundKey,slotIndex){const round=this.rounds[roundKey];if(this.activitySettings.isOpen===false||!this.roundPermission(round,'allowGoalEdit'))return;this.goalModal={show:true,mode:'create',roundKey,goalId:'',slotIndex,action:'',frequency:'',changeType:'initial',reason:''};},
+    openChangeGoal(roundKey,goal){const round=this.rounds[roundKey];if(this.activitySettings.isOpen===false||!this.roundPermission(round,'allowGoalEdit'))return;const current=this.currentVersion(goal);const guidance=roundKey==='round1'&&!!round?.courseGuidanceMode;this.goalModal={show:true,mode:guidance?'guidance':'change',roundKey,goalId:goal.id,slotIndex:goal.slotIndex||null,action:current?.action||'',frequency:current?.frequency||'',changeType:guidance?'course_guidance':'adjustment',reason:''};},
+    closeGoalModal(){this.goalModal.show=false;},
+    async saveGoalModal(){
+      const action=this.goalModal.action.trim();if(!action)return this.showToast('請填寫發展做法');
+      const base=`developmentActivities/${this.activityId}/participants/${this.participantId}/roundData/${this.goalModal.roundKey}/goals`;
+      const now=Date.now();
+      try{
+        if(this.goalModal.mode==='create'){
+          const goalId=this.goalModal.roundKey==='round1'?`slot_${this.goalModal.slotIndex}`:db.ref(base).push().key;
+          const existing=await db.ref(`${base}/${goalId}`).once('value');if(existing.exists())return this.showToast('此位置已經有發展目標');
+          const versionId=db.ref(`${base}/${goalId}/versions`).push().key;
+          await db.ref(`${base}/${goalId}`).set({slotIndex:this.goalModal.slotIndex||null,createdAt:now,updatedAt:now,currentVersionId:versionId,versions:{[versionId]:{action,frequency:this.goalModal.frequency.trim(),changeType:'initial',reason:'',createdAt:now,createdBy:'student'}},logs:{},monthlyChecks:{}});
+          this.showToast('✅ 發展目標已建立');
+        }else{
+          const goalPath=`${base}/${this.goalModal.goalId}`;const snap=await db.ref(goalPath).once('value');const goal=snap.val();if(!goal)throw new Error('找不到原目標');
+          const versionId=db.ref(`${goalPath}/versions`).push().key;const previousId=goal.currentVersionId||'';const previous=goal.versions?.[previousId]||{};
+          const updates={};updates[`${goalPath}/versions/${versionId}`]={action,frequency:this.goalModal.frequency.trim(),changeType:this.goalModal.changeType,reason:this.goalModal.reason.trim(),previousVersionId:previousId,createdAt:now,createdBy:'student'};updates[`${goalPath}/currentVersionId`]=versionId;updates[`${goalPath}/updatedAt`]=now;if(previousId)updates[`${goalPath}/versions/${previousId}/replacedAt`]=now;
+          if(this.goalModal.mode==='guidance'){const auditId=db.ref(`developmentActivities/${this.activityId}`).push().key;updates[`developmentActivities/${this.activityId}/participants/${this.participantId}/audit/${auditId}`]={type:'courseGuidanceEdit',roundKey:this.goalModal.roundKey,goalId:this.goalModal.goalId,versionId,oldText:previous.action||'',newText:action,oldFrequency:previous.frequency||'',newFrequency:this.goalModal.frequency.trim(),createdAt:now,createdBy:'student'};}
+          await db.ref().update(updates);this.showToast(this.goalModal.mode==='guidance'?'✅ 課程中的調整已儲存，並保留學習歷程':'✅ 新的發展目標版本已建立，舊內容已保留');
+        }
+        this.goalModal.show=false;
+      }catch(err){this.showToast('❌ 儲存失敗：'+err.message);}
+    },
+    openLogModal(roundKey,goal){const round=this.rounds[roundKey];if(this.activitySettings.isOpen===false||!this.roundPermission(round,'allowLogEntry'))return;this.logModal={show:true,roundKey,goalId:goal.id,goalTitle:this.currentVersion(goal)?.action||'',date:nowDateInput(),action:'',quantity:'',unit:'',note:''};},
+    closeLogModal(){this.logModal.show=false;},
+    async saveLog(){
+      if(!this.logModal.date||!this.logModal.action.trim())return this.showToast('請填寫完成日期與這次做了什麼');
+      if(this.logModal.date>nowDateInput())return this.showToast('完成日期不能晚於今天');
+      const round=this.rounds[this.logModal.roundKey];
+      if(round?.startDate&&this.logModal.date<round.startDate)return this.showToast('完成日期早於本 Round 的開始日期');
+      if(round?.endDate&&this.logModal.date>round.endDate)return this.showToast('完成日期晚於本 Round 的結束日期');
+      const goal=this.studentGoalArray(this.logModal.roundKey).find(g=>g.id===this.logModal.goalId);if(!goal)return this.showToast('找不到發展目標');
+      const logId=db.ref(`developmentActivities/${this.activityId}`).push().key;const now=Date.now();
+      const path=`developmentActivities/${this.activityId}/participants/${this.participantId}/roundData/${this.logModal.roundKey}/goals/${this.logModal.goalId}/logs/${logId}`;
+      try{await db.ref(path).set({date:this.logModal.date,action:this.logModal.action.trim(),quantity:this.logModal.quantity.trim(),unit:this.logModal.unit.trim(),note:this.logModal.note.trim(),versionId:goal.currentVersionId||'',createdAt:now,voided:false});await db.ref(`developmentActivities/${this.activityId}/participants/${this.participantId}/profile/updatedAt`).set(now);this.logModal.show=false;this.showToast('✅ 完成紀錄已儲存');}catch(err){this.showToast('❌ 儲存失敗：'+err.message);}
+    },
+    openVoidLog(roundKey,goalId,logId){const round=this.rounds[roundKey];if(this.activitySettings.isOpen===false||!this.roundPermission(round,'allowLogEntry'))return;this.voidModal={show:true,participantId:this.participantId,actor:'student',roundKey,goalId,logId,reason:''};},
+    openTeacherVoidLog(participantId,roundKey,goalId,logId){this.voidModal={show:true,participantId,actor:'teacher',roundKey,goalId,logId,reason:''};},
+    async confirmVoidLog(){if(!this.voidModal.reason.trim())return this.showToast('請填寫作廢原因');const targetParticipant=this.voidModal.participantId||this.participantId;const path=`developmentActivities/${this.activityId}/participants/${targetParticipant}/roundData/${this.voidModal.roundKey}/goals/${this.voidModal.goalId}/logs/${this.voidModal.logId}`;const voidPayload={voided:true,voidReason:this.voidModal.reason.trim(),voidedAt:Date.now(),voidedBy:this.voidModal.actor||'student'};await db.ref(path).update(voidPayload);if(this.voidModal.actor==='teacher'&&this.selectedParticipant?.id===targetParticipant){const targetLog=this.selectedParticipant?.roundData?.[this.voidModal.roundKey]?.goals?.[this.voidModal.goalId]?.logs?.[this.voidModal.logId];if(targetLog)Object.assign(targetLog,voidPayload);}this.voidModal.show=false;this.showToast('✅ 紀錄已作廢並保留歷程');},
+    openHistory(goal){this.historyModal={show:true,versions:this.versionArray(goal).slice().reverse(),currentVersionId:goal.currentVersionId||''};},
+    splitRoundPeriods(round){
+      if(!round?.startDate||!round?.endDate)return [{start:'',end:''},{start:'',end:''},{start:'',end:''}];
+      const start=this.parseLocalDate(round.startDate);const end=this.parseLocalDate(round.endDate);if(!start||!end||end<start)return [{start:'',end:''},{start:'',end:''},{start:'',end:''}];
+      const day=86400000;const total=Math.floor((end-start)/day)+1;const result=[];
+      for(let i=0;i<3;i++){const startOffset=Math.floor(total*i/3);const endOffset=(i===2?total-1:Math.floor(total*(i+1)/3)-1);result.push({start:this.dateToInput(new Date(start.getTime()+startOffset*day)),end:this.dateToInput(new Date(start.getTime()+Math.max(startOffset,endOffset)*day))});}
+      return result;
+    },
+    monthLogCount(goal,monthIndex,round){const period=this.splitRoundPeriods(round)[monthIndex];if(!period?.start)return 0;return this.activeLogArray(goal).filter(log=>log.date>=period.start&&log.date<=period.end).length;},
+    async toggleMonthCheck(roundKey,goal,monthIndex,event){
+      if(this.activitySettings.isOpen===false||!this.roundPermission(this.rounds[roundKey],'allowMonthCheck')){event.target.checked=!event.target.checked;return;}
+      const checked=!!event.target.checked;const round=this.rounds[roundKey];const period=this.splitRoundPeriods(round)[monthIndex];
+      if(checked&&period?.end&&nowDateInput()<period.end){event.target.checked=false;return this.showToast('此月份的執行期間尚未結束，期間結束後才能勾選');}
+      if(checked&&this.activitySettings.requireLogBeforeCheck!==false&&this.monthLogCount(goal,monthIndex,round)<1){event.target.checked=false;return this.showToast('本月需先新增至少一筆完成紀錄，才能勾選');}
+      const path=`developmentActivities/${this.activityId}/participants/${this.participantId}/roundData/${roundKey}/goals/${goal.id}/monthlyChecks/month${monthIndex+1}`;
+      try{await db.ref(path).set(checked?{checked:true,checkedAt:Date.now(),period:this.splitRoundPeriods(round)[monthIndex]}:null);this.showToast(checked?'✅ 本月已確認有持續':'已取消本月勾選');}catch(err){event.target.checked=!checked;this.showToast('❌ 更新失敗：'+err.message);}
+    },
+    parseLocalDate(value){if(!value)return null;const d=new Date(`${value}T00:00:00`);return Number.isNaN(d.getTime())?null:d;},
+    dateToInput(d){const offset=d.getTimezoneOffset();return new Date(d.getTime()-offset*60000).toISOString().slice(0,10);},
+    formatDateOnly(value){if(!value)return '—';const d=this.parseLocalDate(value);if(!d)return String(value);return d.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'});},
+    formatDateTime(value){if(!value)return '—';const d=new Date(value);if(Number.isNaN(d.getTime()))return '—';return d.toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});},
+    roundStatusText(round){if(!round.startDate||!round.endDate)return '期間待設定';const today=nowDateInput();if(today<round.startDate)return '尚未開始';if(today>round.endDate)return '已結束';return '執行期間中';},
+    versionTypeText(type){return type==='direction'?'更換方向':type==='adjustment'?'調整做法':type==='course_guidance'?'課程指導中調整':'最初建立';},
+    auditTypeText(type){const map={teacherCorrection:'講師修正目標',teacherMonthCheck:'講師調整月份勾選',identityCorrection:'講師修正姓名／員編',courseGuidanceEdit:'學員課程指導中調整'};return map[type]||type||'其他';},
+    participantGoalCount(p){return ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).length,0);},
+    participantLogCount(p){return ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).reduce((x,g)=>x+this.activeLogArray(g).length,0),0);},
+    participantCheckCount(p){return ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).reduce((x,g)=>x+this.checkedMonthCount(g),0),0);},
+    participantChangeCount(p){return ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).reduce((x,g)=>x+this.goalOfficialChangeCount(g),0),0);},
+    participantGuidanceCount(p){return ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).reduce((x,g)=>x+this.goalGuidanceEditCount(g),0),0);},
+    participantRoundChangeCount(p,roundKey){return this.participantGoalArray(p,roundKey).reduce((s,g)=>s+this.goalOfficialChangeCount(g),0);},
+    participantRoundGuidanceCount(p,roundKey){return this.participantGoalArray(p,roundKey).reduce((s,g)=>s+this.goalGuidanceEditCount(g),0);},
+    participantBingoCompletedCells(p){return this.participantGoalArray(p,'round1').filter(g=>this.checkedMonthCount(g)===3).length;},
+    participantBingoLines(p){return this.participantBingoLineDefs(p).length;},
+    participantBingoLineNames(p){const labels={r1:'上橫線',r2:'中橫線',r3:'下橫線',c1:'左直線',c2:'中直線',c3:'右直線',d1:'左上到右下',d2:'右上到左下'};return this.participantBingoLineDefs(p).map(x=>labels[x.key]||x.key).join('、');},
+    participantLastActivity(p){let last=p.profile?.updatedAt||p.profile?.createdAt||0;ROUND_KEYS.forEach(k=>this.participantGoalArray(p,k).forEach(g=>{last=Math.max(last,g.updatedAt||g.createdAt||0,...this.logArray(g).map(l=>l.createdAt||0),...this.versionArray(g).map(v=>v.createdAt||0));}));return last;},
+    roundParticipantCount(roundKey){return this.participantArray.filter(p=>this.participantGoalArray(p,roundKey).length>0).length;},
+    roundGoalCount(roundKey){return this.participantArray.reduce((s,p)=>s+this.participantGoalArray(p,roundKey).length,0);},
+    roundLogCount(roundKey){return this.participantArray.reduce((s,p)=>s+this.participantGoalArray(p,roundKey).reduce((x,g)=>x+this.activeLogArray(g).length,0),0);},
+    roundFullyCompletedGoalCount(roundKey){return this.participantArray.reduce((s,p)=>s+this.participantGoalArray(p,roundKey).filter(g=>this.checkedMonthCount(g)===3).length,0);},
+    openIdentityModal(participant){this.identityModal={show:true,participantId:participant.id,name:participant.profile?.name||'',employeeNo:participant.profile?.employeeNo||'',oldName:participant.profile?.name||'',oldEmployeeNo:participant.profile?.employeeNo||'',reason:''};},
+    async saveIdentityCorrection(){
+      const m=this.identityModal;const name=this.normalizeName(m.name);const employeeNo=this.normalizeEmployee(m.employeeNo);if(!name||!employeeNo||!m.reason.trim())return this.showToast('請完整填寫姓名、員工編號與修正原因');if(name===this.normalizeName(m.oldName)&&employeeNo===this.normalizeEmployee(m.oldEmployeeNo))return this.showToast('姓名與員工編號都沒有變更');
+      const oldId=m.participantId;const newId=this.participantKey(employeeNo);const oldPath=`developmentActivities/${this.activityId}/participants/${oldId}`;const oldSnap=await db.ref(oldPath).once('value');if(!oldSnap.exists())return this.showToast('找不到此學員資料');const data=oldSnap.val();if(newId!==oldId){const target=await db.ref(`developmentActivities/${this.activityId}/participants/${newId}`).once('value');if(target.exists())return this.showToast('此員工編號已被另一位學員使用，請先確認');}
+      const now=Date.now();const auditId=db.ref(oldPath).push().key;data.profile={...(data.profile||{}),name,employeeNo,updatedAt:now};data.audit={...(data.audit||{}),[auditId]:{type:'identityCorrection',oldName:m.oldName,oldEmployeeNo:m.oldEmployeeNo,newName:name,newEmployeeNo:employeeNo,reason:m.reason.trim(),createdAt:now,createdBy:'teacher'}};
+      const updates={};if(newId===oldId){updates[oldPath]=data;}else{updates[oldPath]=null;updates[`developmentActivities/${this.activityId}/participants/${newId}`]=data;updates[`developmentActivities/${this.activityId}/participantAliases/${oldId}`]={newParticipantId:newId,createdAt:now};}
+      try{await db.ref().update(updates);this.selectedParticipant={id:newId,...data};this.identityModal.show=false;this.showToast('✅ 姓名與員工編號已修正，完整資料與歷程均已保留');}catch(err){this.showToast('❌ 修正失敗：'+err.message);}
+    },
+    deleteParticipant(participant){this.askConfirm(`確定刪除「${participant.profile?.name||'此學員'}」的所有四輪資料？此動作無法復原。`,async()=>{await db.ref(`developmentActivities/${this.activityId}/participants/${participant.id}`).remove();this.selectedParticipant=null;this.showToast('🗑️ 學員資料已刪除');});},
+    async teacherToggleMonthCheck(participant,roundKey,goal,monthIndex){
+      const key=`month${monthIndex+1}`;const current=!!goal.monthlyChecks?.[key]?.checked;const now=Date.now();const base=`developmentActivities/${this.activityId}/participants/${participant.id}`;const auditId=db.ref(base).push().key;const period=this.splitRoundPeriods(this.rounds[roundKey])[monthIndex];
+      const updates={};updates[`${base}/roundData/${roundKey}/goals/${goal.id}/monthlyChecks/${key}`]=current?null:{checked:true,checkedAt:now,period,checkedBy:'teacher'};updates[`${base}/audit/${auditId}`]={type:'teacherMonthCheck',roundKey,goalId:goal.id,month:monthIndex+1,action:current?'clear':'set',createdAt:now};
+      await db.ref().update(updates);if(!goal.monthlyChecks)goal.monthlyChecks={};if(current)delete goal.monthlyChecks[key];else goal.monthlyChecks[key]={checked:true,checkedAt:now,period,checkedBy:'teacher'};this.showToast(current?'已清除該月勾選':'✅ 已由講師補登該月勾選');
+    },
+    openTeacherCorrection(participant,roundKey,goal){const version=this.currentVersion(goal);if(!version)return;this.correctionModal={show:true,participantId:participant.id,roundKey,goalId:goal.id,versionId:version.id,oldText:version.action||'',newText:version.action||'',reason:''};},
+    async saveTeacherCorrection(){
+      const m=this.correctionModal;if(!m.newText.trim()||!m.reason.trim())return this.showToast('請填寫修正後內容與修正原因');if(m.newText.trim()===m.oldText.trim())return this.showToast('修正後內容與原內容相同');
+      const now=Date.now();const auditId=db.ref(`developmentActivities/${this.activityId}`).push().key;const base=`developmentActivities/${this.activityId}/participants/${m.participantId}`;
+      const updates={};updates[`${base}/roundData/${m.roundKey}/goals/${m.goalId}/versions/${m.versionId}/action`]=m.newText.trim();updates[`${base}/roundData/${m.roundKey}/goals/${m.goalId}/updatedAt`]=now;updates[`${base}/profile/updatedAt`]=now;updates[`${base}/audit/${auditId}`]={type:'teacherCorrection',roundKey:m.roundKey,goalId:m.goalId,versionId:m.versionId,oldText:m.oldText,newText:m.newText.trim(),reason:m.reason.trim(),createdAt:now};
+      try{await db.ref().update(updates);const target=this.selectedParticipant?.roundData?.[m.roundKey]?.goals?.[m.goalId]?.versions?.[m.versionId];if(target)target.action=m.newText.trim();this.correctionModal.show=false;this.showToast('✅ 已修正並保留修正歷程');}catch(err){this.showToast('❌ 修正失敗：'+err.message);}
+    },
+    sanitizeFileName(value){return String(value||'活動').replace(/[\\/:*?"<>|]/g,'_').replace(/\s+/g,' ').trim().slice(0,70)||'活動';},
+    async exportJson(){try{const snap=await db.ref(`developmentActivities/${this.activityId}`).once('value');const payload={exportedAt:new Date().toISOString(),activityId:this.activityId,activity:snap.val()||{}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`發展追蹤_${this.sanitizeFileName(this.activitySettings.title)}_${nowDateInput()}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);this.showToast('✅ JSON 完整備份已匯出');}catch(err){this.showToast('❌ JSON 匯出失敗：'+err.message);}},
+    exportExcel(){
+      if(typeof XLSX==='undefined')return this.showToast('❌ Excel 元件尚未載入');
+      const instructionRows=[['個人發展行動追蹤系統－匯出資料說明'],['本活頁簿完整保留四輪開放權限、九宮格、目標版本、課程指導中調整、完成紀錄、每月勾選及講師修正歷程。'],['「正式改變目標」只計算調整做法與更換方向；Round 1 課程指導中直接改寫會另列為「課程中調整」，不納入正式改變次數。'],['作廢完成紀錄仍保留於「完成紀錄」工作表，但不計入有效紀錄數。'],['匯出時間',this.formatDateTime(Date.now())]];
+      const settingsRows=[['類別','欄位','內容'],['活動','活動名稱',this.activitySettings.title],['活動','學員說明',this.activitySettings.introText],['活動','講師後台主要顯示 Round',this.activitySettings.currentRound],['活動','活動開放',this.activitySettings.isOpen===false?'否':'是'],['活動','勾選前需有紀錄',this.activitySettings.requireLogBeforeCheck===false?'否':'是']];
+      this.roundArray.forEach(r=>{const periods=this.splitRoundPeriods(r);settingsRows.push([`Round ${r.number}`,'名稱',r.title],[`Round ${r.number}`,'執行期間',`${r.startDate||''}～${r.endDate||''}`],[`Round ${r.number}`,'開放設定／修改目標',this.roundPermission(r,'allowGoalEdit')?'是':'否'],[`Round ${r.number}`,'開放完成紀錄',this.roundPermission(r,'allowLogEntry')?'是':'否'],[`Round ${r.number}`,'開放月份勾選',this.roundPermission(r,'allowMonthCheck')?'是':'否'],[`Round ${r.number}`,'課程指導中',r.number===1?(r.courseGuidanceMode?'是':'否'):'不適用'],[`Round ${r.number}`,'第1月',periods[0].start?`${periods[0].start}～${periods[0].end}`:''],[`Round ${r.number}`,'第2月',periods[1].start?`${periods[1].start}～${periods[1].end}`:''],[`Round ${r.number}`,'第3月',periods[2].start?`${periods[2].start}～${periods[2].end}`:'']);});
+      const participantRows=[],roundProgressRows=[],round1OverviewRows=[],round1DetailRows=[],currentGoalRows=[],versionRows=[],logRows=[],checkRows=[],auditRows=[];
+      this.participantArray.forEach(p=>{
+        const voidedLogs=ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).reduce((x,g)=>x+this.logArray(g).filter(l=>l.voided).length,0),0);
+        const overview={'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','建立時間':this.formatDateTime(p.profile?.createdAt),'最後登入':this.formatDateTime(p.profile?.lastLoginAt),'最後活動':this.formatDateTime(this.participantLastActivity(p)),'全部目標數':this.participantGoalCount(p),'有效完成紀錄':this.participantLogCount(p),'作廢紀錄':voidedLogs,'月份勾選':this.participantCheckCount(p),'正式改變目標':this.participantChangeCount(p),'課程中調整':this.participantGuidanceCount(p),'Round1完成格':this.participantBingoCompletedCells(p),'Round1連線數':this.participantBingoLines(p),'Round1連線位置':this.participantBingoLineNames(p)};
+        ROUND_KEYS.forEach(k=>{const no=k.replace('round','');overview[`R${no}目標`]=this.participantGoalArray(p,k).length;overview[`R${no}有效紀錄`]=this.participantGoalArray(p,k).reduce((s,g)=>s+this.activeLogArray(g).length,0);overview[`R${no}月份勾選`]=this.participantGoalArray(p,k).reduce((s,g)=>s+this.checkedMonthCount(g),0);});participantRows.push(overview);
+        ROUND_KEYS.forEach(roundKey=>{const round=this.rounds[roundKey];const goals=this.participantGoalArray(p,roundKey);roundProgressRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'Round名稱':round.title,'執行期間':round.startDate&&round.endDate?`${round.startDate}～${round.endDate}`:'','本輪開放權限':this.roundPermissionText(round),'目標數':goals.length,'有效紀錄':goals.reduce((s,g)=>s+this.activeLogArray(g).length,0),'作廢紀錄':goals.reduce((s,g)=>s+this.logArray(g).filter(l=>l.voided).length,0),'月份勾選':goals.reduce((s,g)=>s+this.checkedMonthCount(g),0),'三月皆完成目標':goals.filter(g=>this.checkedMonthCount(g)===3).length,'正式改變目標':goals.reduce((s,g)=>s+this.goalOfficialChangeCount(g),0),'課程中調整':goals.reduce((s,g)=>s+this.goalGuidanceEditCount(g),0),'九宮格完成格':round.number===1?this.participantBingoCompletedCells(p):'','九宮格連線數':round.number===1?this.participantBingoLines(p):''});});
+        const slots=this.participantRound1Slots(p);const r1row={'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','完成格數':this.participantBingoCompletedCells(p),'連線數':this.participantBingoLines(p),'連線位置':this.participantBingoLineNames(p),'正式改變目標':this.participantRoundChangeCount(p,'round1'),'課程中調整':this.participantRoundGuidanceCount(p,'round1')};slots.forEach(slot=>{const g=slot.goal;r1row[`第${slot.index}格_做法`]=g?(this.currentVersion(g)?.action||''):'';r1row[`第${slot.index}格_完成`]=g&&this.checkedMonthCount(g)===3?'✓':'';});round1OverviewRows.push(r1row);
+        slots.forEach(slot=>{const g=slot.goal;round1DetailRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','九宮格位置':slot.index,'目前發展做法':g?(this.currentVersion(g)?.action||''):'','執行節奏':g?(this.currentVersion(g)?.frequency||''):'','版本數':g?this.versionArray(g).length:0,'正式改變目標':g?this.goalOfficialChangeCount(g):0,'課程中調整':g?this.goalGuidanceEditCount(g):0,'有效完成紀錄':g?this.activeLogArray(g).length:0,'作廢紀錄':g?this.logArray(g).filter(l=>l.voided).length:0,'第1月勾選':g?.monthlyChecks?.month1?.checked?'是':'否','第2月勾選':g?.monthlyChecks?.month2?.checked?'是':'否','第3月勾選':g?.monthlyChecks?.month3?.checked?'是':'否','三月皆完成':g&&this.checkedMonthCount(g)===3?'是':'否','是否形成連線':g&&this.participantBingoLineDefs(p).some(line=>line.cells.includes(slot.index))?'是':'否'});});
+        ROUND_KEYS.forEach(roundKey=>this.participantGoalArray(p,roundKey).forEach(g=>{
+          const round=this.rounds[roundKey],cur=this.currentVersion(g);currentGoalRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'Round名稱':round.title,'九宮格位置':g.slotIndex||'','目標ID':g.id,'目前發展做法':cur?.action||'','執行節奏':cur?.frequency||'','版本數':this.versionArray(g).length,'正式改變目標':this.goalOfficialChangeCount(g),'課程中調整':this.goalGuidanceEditCount(g),'有效完成紀錄':this.activeLogArray(g).length,'作廢紀錄':this.logArray(g).filter(l=>l.voided).length,'月份勾選':this.checkedMonthCount(g),'三月皆完成':this.checkedMonthCount(g)===3?'是':'否','建立時間':this.formatDateTime(g.createdAt),'最後更新':this.formatDateTime(g.updatedAt)});
+          this.versionArray(g).forEach((v,index)=>versionRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'九宮格位置':g.slotIndex||'','目標ID':g.id,'版本序號':index+1,'是否目前版本':v.id===g.currentVersionId?'是':'否','版本類型':this.versionTypeText(v.changeType),'計入正式改變次數':(v.changeType==='adjustment'||v.changeType==='direction')?'是':'否','列入課程中調整':v.changeType==='course_guidance'?'是':'否','發展做法':v.action||'','執行節奏':v.frequency||'','調整原因':v.reason||'','前一版本ID':v.previousVersionId||'','建立者':v.createdBy==='teacher'?'講師':'學員','建立時間':this.formatDateTime(v.createdAt),'被取代時間':this.formatDateTime(v.replacedAt)}));
+          this.logArray(g).forEach(l=>{const logVersion=g.versions?.[l.versionId];logRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'九宮格位置':g.slotIndex||'','目標ID':g.id,'紀錄時的發展做法':logVersion?.action||cur?.action||'','目前發展做法':cur?.action||'','完成日期':l.date||'','完成內容':l.action||'','數量':l.quantity||'','單位':l.unit||'','補充說明':l.note||'','狀態':l.voided?'已作廢':'有效','作廢原因':l.voidReason||'','作廢者':l.voidedBy==='teacher'?'講師':l.voidedBy==='student'?'學員':'','建立時間':this.formatDateTime(l.createdAt),'作廢時間':this.formatDateTime(l.voidedAt)});});
+          [1,2,3].forEach(n=>{const c=g.monthlyChecks?.[`month${n}`],period=this.splitRoundPeriods(round)[n-1];checkRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'九宮格位置':g.slotIndex||'','目標ID':g.id,'發展做法':cur?.action||'','月份':n,'期間':period.start?`${period.start}～${period.end}`:'','是否勾選':c?.checked?'是':'否','勾選者':c?.checkedBy==='teacher'?'講師':c?.checked?'學員':'','勾選時間':this.formatDateTime(c?.checkedAt),'期間內有效紀錄數':this.monthLogCount(g,n-1,round)});});
+        }));
+        Object.keys(p.audit||{}).forEach(id=>{const a=p.audit[id],goal=a.roundKey&&a.goalId?this.participantGoalArray(p,a.roundKey).find(g=>g.id===a.goalId):null;auditRows.push({'姓名':p.profile?.name||a.newName||a.oldName||'','目前員工編號':p.profile?.employeeNo||a.newEmployeeNo||'','紀錄類型':this.auditTypeText(a.type),'Round':String(a.roundKey||'').replace('round',''),'九宮格位置':goal?.slotIndex||'','目標ID':a.goalId||'','月份':a.month||'','操作':a.action==='set'?'補登勾選':a.action==='clear'?'清除勾選':a.action||'','修正前姓名':a.oldName||'','修正後姓名':a.newName||'','修正前員工編號':a.oldEmployeeNo||'','修正後員工編號':a.newEmployeeNo||'','修正前內容':a.oldText||'','修正後內容':a.newText||'','原因':a.reason||'','建立者':a.createdBy==='student'?'學員':a.createdBy==='teacher'?'講師':'講師','時間':this.formatDateTime(a.createdAt)});});
+      });
+      const wb=XLSX.utils.book_new();
+      const sheetFromRows=(rows,headers)=>rows.length?XLSX.utils.json_to_sheet(rows,{header:headers}):XLSX.utils.aoa_to_sheet([headers]);
+      const formatSheet=(ws,widths)=>{ws['!cols']=widths.map(wch=>({wch}));if(ws['!ref'])ws['!autofilter']={ref:ws['!ref']};ws['!freeze']={xSplit:0,ySplit:1};const range=XLSX.utils.decode_range(ws['!ref']||'A1:A1');for(let c=range.s.c;c<=range.e.c;c++){const cell=ws[XLSX.utils.encode_cell({r:0,c})];if(cell)cell.s={font:{bold:true},fill:{fgColor:{rgb:'E0F2FE'}},alignment:{vertical:'center',wrapText:true}};}for(let r=1;r<=range.e.r;r++){for(let c=range.s.c;c<=range.e.c;c++){const cell=ws[XLSX.utils.encode_cell({r,c})];if(cell)cell.s={alignment:{vertical:'top',wrapText:true}};}}};
+      const add=(name,ws,widths)=>{formatSheet(ws,widths);XLSX.utils.book_append_sheet(wb,ws,name);};
+      add('使用說明',XLSX.utils.aoa_to_sheet(instructionRows),[110,28]);
+      add('活動與開放設定',XLSX.utils.aoa_to_sheet(settingsRows),[18,28,85]);
+      add('學員總覽',sheetFromRows(participantRows,Object.keys(participantRows[0]||{'姓名':'','員工編號':''})),[15,16,20,20,20,11,12,10,12,14,12,13,12,22,9,11,9,11,9,11,9,11]);
+      add('各輪學員進度',sheetFromRows(roundProgressRows,['姓名','員工編號','Round','Round名稱','執行期間','本輪開放權限','目標數','有效紀錄','作廢紀錄','月份勾選','三月皆完成目標','正式改變目標','課程中調整','九宮格完成格','九宮格連線數']),[15,16,8,24,24,35,9,10,10,10,14,13,12,12,12]);
+      add('Round1九宮格總覽',sheetFromRows(round1OverviewRows,Object.keys(round1OverviewRows[0]||{'姓名':'','員工編號':''})),[15,16,10,10,24,13,12,...Array(18).fill(34)]);
+      add('Round1九宮格明細',sheetFromRows(round1DetailRows,['姓名','員工編號','九宮格位置','目前發展做法','執行節奏','版本數','正式改變目標','課程中調整','有效完成紀錄','作廢紀錄','第1月勾選','第2月勾選','第3月勾選','三月皆完成','是否形成連線']),[15,16,11,55,28,8,13,12,12,10,11,11,11,11,12]);
+      add('目前發展目標',sheetFromRows(currentGoalRows,['姓名','員工編號','Round','Round名稱','九宮格位置','目標ID','目前發展做法','執行節奏','版本數','正式改變目標','課程中調整','有效完成紀錄','作廢紀錄','月份勾選','三月皆完成','建立時間','最後更新']),[15,16,8,24,11,20,58,28,8,13,12,12,10,10,11,20,20]);
+      add('發展目標版本',sheetFromRows(versionRows,['姓名','員工編號','Round','九宮格位置','目標ID','版本序號','是否目前版本','版本類型','計入正式改變次數','列入課程中調整','發展做法','執行節奏','調整原因','前一版本ID','建立者','建立時間','被取代時間']),[15,16,8,11,20,9,12,18,16,15,60,28,45,20,9,20,20]);
+      add('完成紀錄',sheetFromRows(logRows,['姓名','員工編號','Round','九宮格位置','目標ID','紀錄時的發展做法','目前發展做法','完成日期','完成內容','數量','單位','補充說明','狀態','作廢原因','作廢者','建立時間','作廢時間']),[15,16,8,11,20,55,55,13,55,9,9,45,10,32,9,20,20]);
+      add('每月勾選',sheetFromRows(checkRows,['姓名','員工編號','Round','九宮格位置','目標ID','發展做法','月份','期間','是否勾選','勾選者','勾選時間','期間內有效紀錄數']),[15,16,8,11,20,55,8,24,10,9,20,16]);
+      add('操作與修正歷程',sheetFromRows(auditRows,['姓名','目前員工編號','紀錄類型','Round','九宮格位置','目標ID','月份','操作','修正前姓名','修正後姓名','修正前員工編號','修正後員工編號','修正前內容','修正後內容','原因','建立者','時間']),[15,16,22,8,11,20,8,12,15,15,16,16,55,55,40,9,20]);
+      XLSX.writeFile(wb,`發展追蹤_${this.sanitizeFileName(this.activitySettings.title)}_${nowDateInput()}.xlsx`,{compression:true,cellStyles:true});this.showToast('✅ 完整 Excel 已匯出');
+    }
+  }
+});
+
+app.component('goal-detail', {
+  props:['goal'],
+  computed:{
+    parent(){return this.$root;},
+    round(){return this.parent.selectedRound;},
+    current(){return this.parent.currentVersion(this.goal);},
+    periods(){return this.parent.splitRoundPeriods(this.round);},
+    logs(){return this.parent.logArray(this.goal);}
+  },
+  template:`
+    <article class="card goal-card">
+      <div class="goal-card-head" :class="{green:parent.checkedMonthCount(goal)===3}">
+        <h3>{{ current?.action || '未命名發展做法' }}</h3>
+        <small>{{ current?.frequency ? '執行節奏：'+current.frequency : '可持續的小行動' }}｜版本 {{ parent.versionArray(goal).length }}</small>
+      </div>
+      <div class="goal-card-body">
+        <div class="goal-actions">
+          <button class="btn btn-success btn-small" :disabled="!parent.canAddLogsSelectedRound" @click="parent.openLogModal(round.id,goal)">＋新增完成紀錄</button>
+          <button class="btn btn-soft-amber btn-small" :disabled="!parent.canEditGoalsSelectedRound" @click="parent.openChangeGoal(round.id,goal)">{{ round.number===1 && round.courseGuidanceMode ? '課程中修改' : '改變發展目標' }}</button>
+          <button class="btn btn-ghost btn-small" @click="parent.openHistory(goal)">查看歷程</button>
+        </div>
+        <div class="monthly-grid">
+          <div v-for="(period,index) in periods" :key="index" class="month-box" :class="{checked:goal.monthlyChecks?.['month'+(index+1)]?.checked}">
+            <h4>第 {{ index+1 }} 個月</h4>
+            <div class="month-date">{{ period.start ? parent.formatDateOnly(period.start)+'～'+parent.formatDateOnly(period.end) : '期間待講師設定' }}</div>
+            <div class="month-count">{{ parent.monthLogCount(goal,index,round) }} 筆有效紀錄</div>
+            <label class="check-line"><input type="checkbox" :checked="goal.monthlyChecks?.['month'+(index+1)]?.checked" :disabled="!parent.canCheckSelectedRound || !period.start" @change="parent.toggleMonthCheck(round.id,goal,index,$event)">有持續</label>
+          </div>
+        </div>
+        <div class="section-head" style="margin-bottom:9px;"><div><h3 style="font-size:1rem;">完成紀錄</h3><p>留下簡短紀錄，讓自己看見持續累積。</p></div></div>
+        <div v-if="logs.length" class="log-list">
+          <div v-for="log in logs" :key="log.id" class="log-row" :class="{voided:log.voided}">
+            <div class="log-head"><div class="log-title">{{ log.action }}</div><div class="log-date">{{ parent.formatDateOnly(log.date) }}</div></div>
+            <div class="log-meta"><template v-if="log.quantity || log.unit">數量：{{ log.quantity }} {{ log.unit }}<br></template>{{ log.note || '' }}<template v-if="log.voided"><br>已作廢：{{ log.voidReason || '未填原因' }}</template></div>
+            <button v-if="!log.voided" class="btn btn-ghost btn-small" style="margin-top:7px;" :disabled="!parent.canAddLogsSelectedRound" @click="parent.openVoidLog(round.id,goal.id,log.id)">作廢此筆</button>
+          </div>
+        </div>
+        <div v-else class="no-data">尚未留下完成紀錄。</div>
+      </div>
+    </article>`
+});
+
+app.mount('#app');
+</script>
+</body>
+</html>
