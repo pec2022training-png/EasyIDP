@@ -676,7 +676,7 @@
     <div class="card student-hero"><h1>{{ activitySettings.title || '個人發展行動追蹤' }}</h1><p>{{ activitySettings.introText || '從一件小而可持續的事情開始，留下自己的完成紀錄。' }}</p></div>
     <div v-if="activitySettings.isOpen===false" class="notice notice-red"><strong>活動目前暫停使用</strong><br>講師尚未開放本活動，請稍後再試。</div>
     <div v-else class="card" style="max-width:520px;margin:0 auto;">
-      <h2 style="margin-top:0;">第一次進入／找回我的資料</h2>
+      <h2 style="margin-top:0;">第一次進入／繼續編輯我的資料</h2>
       <p class="muted" style="line-height:1.65;">第一次請輸入姓名與員工編號。這台裝置之後會直接讀取您的資料；換裝置時，再輸入相同資料即可找回。</p>
       <div class="form-grid"><div><label class="field-label">姓名 <span class="required">*</span></label><input type="text" v-model.trim="studentLoginForm.name" maxlength="50" placeholder="請輸入姓名"></div><div><label class="field-label">員工編號 <span class="required">*</span></label><input type="text" v-model.trim="studentLoginForm.employeeNo" maxlength="50" @keydown.enter="studentLogin" placeholder="請輸入員工編號"></div><button class="btn btn-primary btn-block" @click="studentLogin">進入我的發展計畫</button></div>
     </div>
