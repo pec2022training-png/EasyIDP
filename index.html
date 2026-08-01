@@ -673,7 +673,7 @@
 
   <!-- 學員端：登入 -->
   <main v-else-if="currentView==='studentLogin'" class="student-container">
-    <div class="card student-hero"><h1>{{ activitySettings.title || '個人發展行動追蹤' }}</h1><p>{{ activitySettings.introText || '從一件小而可持續的事情開始，逐步落實對自己的發展期待。' }}</p></div>
+    <div class="card student-hero"><h1>{{ activitySettings.title || '個人發展行動追蹤' }}</h1><p>{{ activitySettings.introText || '從一件小而可持續的事情開始，逐步落實對自己發展的期待。' }}</p></div>
     <div v-if="activitySettings.isOpen===false" class="notice notice-red"><strong>活動目前暫停使用</strong><br>講師尚未開放本活動，請稍後再試。</div>
     <div v-else class="card" style="max-width:520px;margin:0 auto;">
       <h2 style="margin-top:0;">第一次進入／繼續編輯我的資料</h2>
