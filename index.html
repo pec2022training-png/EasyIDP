@@ -190,6 +190,39 @@
     .period-chip { background:#fff; border:1px solid #bae6fd; border-radius:11px; padding:10px; text-align:center; color:#075985; font-size:.86rem; line-height:1.45; }
     .period-chip strong { display:block; }
     .goal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .action-overview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .action-overview-card {
+      min-height:230px; border:2px solid #dbeafe; border-radius:16px; background:#fff; padding:17px;
+      display:flex; flex-direction:column; box-shadow:0 4px 15px rgba(15,23,42,.045); transition:.18s;
+    }
+    .action-overview-card:hover { transform:translateY(-2px); border-color:#7dd3fc; box-shadow:0 9px 24px rgba(14,165,233,.12); }
+    .action-overview-card.complete { border-color:#34d399; background:#f0fdf4; }
+    .action-overview-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:11px; }
+    .action-overview-number {
+      min-width:34px; height:34px; padding:0 10px; border-radius:10px; display:grid; place-items:center;
+      background:var(--primary-soft); color:var(--primary-dark); font-weight:950;
+    }
+    .action-overview-card.complete .action-overview-number { background:#d1fae5; color:#047857; }
+    .action-overview-status {
+      border-radius:999px; padding:6px 10px; background:#f1f5f9; color:#475569;
+      font-size:.78rem; font-weight:900; white-space:nowrap;
+    }
+    .action-overview-card.complete .action-overview-status { background:#d1fae5; color:#047857; }
+    .action-overview-title {
+      color:#334155; font-size:1.08rem; font-weight:950; line-height:1.55; white-space:pre-wrap;
+      overflow-wrap:anywhere; margin-bottom:7px;
+    }
+    .action-overview-frequency { color:var(--muted); font-size:.84rem; line-height:1.5; margin-bottom:12px; }
+    .action-overview-progress { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; margin-bottom:12px; }
+    .action-month-chip {
+      border:1px solid var(--line); border-radius:10px; padding:8px 5px; background:#f8fafc;
+      text-align:center; color:#64748b; font-size:.78rem; font-weight:850; line-height:1.35;
+    }
+    .action-month-chip.checked { background:#ecfdf5; border-color:#86efac; color:#047857; }
+    .action-overview-meta { color:var(--success-dark); font-size:.84rem; font-weight:900; margin-bottom:12px; }
+    .action-overview-actions { display:flex; flex-wrap:wrap; gap:7px; margin-top:auto; }
+    .action-overview-actions .btn:first-child { flex:1 1 125px; }
+    .action-add-card { min-height:230px; }
     .goal-card { position:relative; overflow:hidden; padding:0; }
     .goal-card-head { padding:15px 17px; background:linear-gradient(135deg,#0ea5e9,#1976d2); color:#fff; }
     .goal-card-head.green { background:linear-gradient(135deg,#10b981,#059669); }
@@ -289,7 +322,7 @@
       .student-container { width:min(100% - 20px,900px); padding-top:12px; }
       .card { padding:18px; border-radius:14px; }
       .login-box { padding:28px 20px; }
-      .create-row,.inline-actions,.settings-grid,.two-col-form,.goal-grid { grid-template-columns:1fr; }
+      .create-row,.inline-actions,.settings-grid,.two-col-form,.goal-grid,.action-overview-grid { grid-template-columns:1fr; }
       .metric-grid { grid-template-columns:repeat(2,1fr); }
       .round-nav { grid-template-columns:repeat(2,1fr); }
       .round-setting-grid,.round-permission-grid,.automation-grid { grid-template-columns:1fr; }
@@ -433,12 +466,13 @@
     </div>
   </div>
 
-  <!-- 學員端：從九宮格開啟單格完整操作 -->
+  <!-- 學員端：從總覽小卡開啟單項完整操作 -->
   <div v-if="studentGoalDetail.show && studentGoalDetailGoal" class="modal-overlay student-detail-overlay" @click.self="closeStudentGoalDetail">
     <div class="modal modal-wide">
       <div class="section-head">
         <div>
-          <h2>九宮格第 {{ studentGoalDetailGoal.slotIndex }} 格｜完整操作</h2>
+          <h2 v-if="studentGoalDetailRound?.number===1">九宮格第 {{ studentGoalDetailGoal.slotIndex }} 格｜完整操作</h2>
+          <h2 v-else>Round {{ studentGoalDetailRound?.number }}｜第 {{ studentGoalDetailIndex }} 項完整操作</h2>
           <p>月份勾選、完成紀錄、內容調整與歷程都集中在這裡。</p>
         </div>
         <button class="btn btn-ghost" @click="closeStudentGoalDetail">關閉</button>
@@ -760,12 +794,28 @@
       </div>
     </section>
 
-    <!-- Round 2~4 -->
+    <!-- Round 2~4：小卡總覽，點入後再看完整明細與月份勾選 -->
     <section v-else>
       <div class="bingo-summary"><span class="summary-chip green">已建立 {{ selectedRoundGoals.length }}/5 項</span><span class="summary-chip">三月皆完成 {{ selectedRoundFullyCompleted }}/{{ selectedRoundGoals.length || 0 }} 項</span><span class="summary-chip amber">正式改變 {{ selectedRoundChangeCount }} 次</span></div>
-      <div class="goal-grid">
-        <goal-detail v-for="goal in selectedRoundGoals" :key="goal.id" :goal="goal"></goal-detail>
-        <button v-if="selectedRoundGoals.length<5" class="card add-goal-card" :disabled="!canEditGoalsSelectedRound" @click="openCreateGoal(selectedRound.id,null)"><div><strong>＋新增發展做法</strong><span>本輪最多可建立 5 項</span></div></button>
+      <div class="action-overview-grid">
+        <article v-for="(goal,index) in selectedRoundGoals" :key="goal.id" class="action-overview-card" :class="{complete:checkedMonthCount(goal)===3}">
+          <div class="action-overview-head">
+            <div class="action-overview-number">{{ index+1 }}</div>
+            <div class="action-overview-status">{{ checkedMonthCount(goal)===3 ? '三個月皆完成' : checkedMonthCount(goal)+'/3 個月完成' }}</div>
+          </div>
+          <div class="action-overview-title">{{ currentVersion(goal)?.action || '未命名發展做法' }}</div>
+          <div class="action-overview-frequency">{{ currentVersion(goal)?.frequency ? '執行節奏：'+currentVersion(goal).frequency : '尚未填寫執行節奏' }}</div>
+          <div class="action-overview-progress">
+            <div v-for="n in 3" :key="n" class="action-month-chip" :class="{checked:goal.monthlyChecks?.['month'+n]?.checked}">第 {{ n }} 月<br>{{ goal.monthlyChecks?.['month'+n]?.checked ? '已持續' : '尚未勾選' }}</div>
+          </div>
+          <div class="action-overview-meta">{{ activeLogArray(goal).length }} 筆有效紀錄｜版本 {{ versionArray(goal).length }}</div>
+          <div class="action-overview-actions">
+            <button class="btn btn-soft btn-small" @click="openStudentGoalDetail(selectedRound.id,goal)">查看明細／勾選</button>
+            <button class="btn btn-success btn-small" :disabled="!canAddLogsSelectedRound" @click="openLogModal(selectedRound.id,goal)">＋紀錄</button>
+            <button class="btn btn-soft-amber btn-small" :disabled="!canEditGoalsSelectedRound" @click="openChangeGoal(selectedRound.id,goal)">改變目標</button>
+          </div>
+        </article>
+        <button v-if="selectedRoundGoals.length<5" class="card add-goal-card action-add-card" :disabled="!canEditGoalsSelectedRound" @click="openCreateGoal(selectedRound.id,null)"><div><strong>＋新增發展做法</strong><span>本輪最多可建立 5 項</span></div></button>
       </div>
     </section>
     <div class="copyright-footer">統一集團 企訓學院 製作 ® Made by Clyde</div>
@@ -912,7 +962,12 @@ const app = createApp({
       return Array.from({length:9},(_,i)=>({index:i+1,goal:map[i+1]||null}));
     },
     bingoCompletedCells() { return this.round1Slots.filter(x=>x.goal && this.checkedMonthCount(x.goal)===3).length; },
+    studentGoalDetailRound() { return this.rounds[this.studentGoalDetail.roundKey] || this.selectedRound; },
     studentGoalDetailGoal() { return this.studentGoalDetail.show ? this.studentGoalArray(this.studentGoalDetail.roundKey).find(g=>g.id===this.studentGoalDetail.goalId) || null : null; },
+    studentGoalDetailIndex() {
+      if(!this.studentGoalDetailGoal)return '';
+      return this.studentGoalArray(this.studentGoalDetail.roundKey).findIndex(g=>g.id===this.studentGoalDetail.goalId)+1;
+    },
     teacherGoalDetailGoal() { return this.teacherGoalDetail.show && this.selectedParticipant ? this.participantGoalArray(this.selectedParticipant,this.teacherGoalDetail.roundKey).find(g=>g.id===this.teacherGoalDetail.goalId) || null : null; },
     bingoLines() {
       const complete = new Set(this.round1Slots.filter(x=>x.goal && this.checkedMonthCount(x.goal)===3).map(x=>x.index));
@@ -1241,7 +1296,7 @@ app.component('goal-detail', {
   props:['goal'],
   computed:{
     parent(){return this.$root;},
-    round(){return this.parent.selectedRound;},
+    round(){return this.parent.studentGoalDetailRound || this.parent.selectedRound;},
     current(){return this.parent.currentVersion(this.goal);},
     periods(){return this.parent.splitRoundPeriods(this.round);},
     logs(){return this.parent.logArray(this.goal);}
