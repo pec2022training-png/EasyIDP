@@ -153,11 +153,19 @@
     .round-setting-row { border:1px solid var(--line); border-radius:14px; padding:16px; background:#fff; }
     .round-setting-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
     .round-number { width:38px; height:38px; border-radius:11px; display:grid; place-items:center; background:var(--primary-soft); color:var(--primary-dark); font-weight:950; }
+    .round-master-toggle { display:flex; align-items:flex-start; gap:10px; padding:13px 14px; margin-bottom:12px; border:1px solid #cbd5e1; border-radius:12px; background:#f8fafc; color:#475569; line-height:1.5; }
+    .round-master-toggle.enabled { background:#f0fdf4; border-color:#86efac; color:#166534; }
+    .round-master-toggle input { width:21px; height:21px; margin-top:1px; accent-color:var(--success); flex:0 0 auto; }
+    .round-master-toggle .access-state { margin-left:auto; flex:0 0 auto; }
     .round-setting-grid { display:grid; grid-template-columns:1.4fr 1fr 1fr; gap:11px; }
     .round-permission-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin-top:12px; }
     .permission-option { display:flex; align-items:flex-start; gap:8px; padding:11px 12px; border:1px solid var(--line); border-radius:11px; background:#f8fafc; color:#334155; font-weight:850; line-height:1.45; }
     .permission-option input { width:19px; height:19px; margin-top:1px; accent-color:var(--primary); flex:0 0 auto; }
     .permission-option.guidance { background:#fffbeb; border-color:#fde68a; color:#92400e; }
+    .round-automation { margin-top:11px; padding:13px; border:1px dashed #c4b5fd; border-radius:12px; background:#faf8ff; }
+    .automation-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; margin-top:11px; }
+    .automation-quick { display:flex; flex-wrap:wrap; gap:7px; margin-top:9px; }
+    .automation-summary { margin-top:9px; color:#6d28d9; font-size:.84rem; font-weight:800; line-height:1.55; }
     .settings-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:13px; }
     .full { grid-column:1/-1; }
     .notice { border-radius:14px; padding:14px 16px; line-height:1.65; margin-bottom:16px; }
@@ -172,7 +180,8 @@
     .round-nav { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:16px; }
     .round-nav-btn { border:1px solid var(--line); background:#fff; border-radius:13px; padding:13px 9px; text-align:center; color:#475569; font-weight:900; }
     .round-nav-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); box-shadow:0 7px 18px rgba(14,165,233,.22); }
-    .round-nav-btn.current:not(.active) { border-color:#86efac; background:#f0fdf4; color:#166534; }
+    .round-nav-btn.open-round:not(.active) { border-color:#86efac; background:#f0fdf4; color:#166534; }
+    .round-nav-btn.current:not(.active) { box-shadow:inset 0 0 0 2px #7dd3fc; }
     .round-nav-btn small { display:block; margin-top:4px; font-size:.75rem; font-weight:700; opacity:.88; }
     .round-banner { background:linear-gradient(135deg,#e0f2fe,#f0f9ff); border:1px solid #bae6fd; border-radius:17px; padding:20px; margin-bottom:16px; }
     .round-banner h2 { margin:0 0 7px; color:#075985; }
@@ -282,7 +291,7 @@
       .create-row,.inline-actions,.settings-grid,.two-col-form,.goal-grid { grid-template-columns:1fr; }
       .metric-grid { grid-template-columns:repeat(2,1fr); }
       .round-nav { grid-template-columns:repeat(2,1fr); }
-      .round-setting-grid,.round-permission-grid { grid-template-columns:1fr; }
+      .round-setting-grid,.round-permission-grid,.automation-grid { grid-template-columns:1fr; }
       .round-setting-grid > :first-child { grid-column:auto; }
       .period-strip { grid-template-columns:1fr; }
       .monthly-grid { grid-template-columns:1fr; }
@@ -343,7 +352,7 @@
   <div v-if="showTeacherSettings" class="modal-overlay" @click.self="showTeacherSettings=false">
     <div class="modal modal-wide">
       <div class="section-head">
-        <div><h2>⚙️ 活動、期間與學員操作權限</h2><p>各輪日期由講師統一設定；每一輪可分別開放目標編修、完成紀錄與月份勾選，因此可同時讓學員完成上一輪勾選並設定下一輪計畫。</p></div>
+        <div><h2>⚙️ 活動、期間與學員操作權限</h2><p>每一個 Round 都可獨立開啟或中止，因此可同時開放上一輪維護與下一輪設定。日期只用於顯示及月份切分，不會自行控制 Round 權限。</p></div>
         <button class="btn btn-ghost" @click="showTeacherSettings=false">關閉</button>
       </div>
       <div class="settings-grid">
@@ -352,10 +361,11 @@
           <input type="text" v-model.trim="settingsDraft.title">
         </div>
         <div>
-          <label class="field-label">講師後台主要顯示 Round</label>
-          <select v-model="settingsDraft.currentRound">
+          <label class="field-label">目前進行 Round（講師主畫面＋學員預設進入）</label>
+          <select v-model="settingsDraft.currentRound" @change="onCurrentRoundChanged">
             <option :value="1">Round 1</option><option :value="2">Round 2</option><option :value="3">Round 3</option><option :value="4">Round 4</option>
           </select>
+          <div class="field-help">切換時會先將該 Round 開啟，並開放三項操作；不會自動關閉其他 Round。</div>
         </div>
         <div class="full">
           <label class="field-label">學員首頁說明</label>
@@ -376,6 +386,7 @@
           </select>
         </div>
       </div>
+      <div class="notice notice-blue" style="margin-top:16px;margin-bottom:0;"><strong>權限判斷原則</strong><br>Round 的開始／結束日期不會自動開關學員權限。只有下方的「開放本 Round」與講師主動啟用的時間自動化，才會影響學員能否操作。</div>
       <div style="height:1px;background:var(--line);margin:21px 0;"></div>
       <div class="round-setting-list">
         <div v-for="round in roundDraftArray" :key="round.id" class="round-setting-row">
@@ -383,24 +394,39 @@
             <div class="round-number">{{ round.number }}</div>
             <div><strong>Round {{ round.number }}</strong><div class="muted small">{{ round.number===1 ? '九宮格習慣養成｜最多 9 項' : '個人發展行動｜最多 5 項' }}</div></div>
           </div>
+          <label class="round-master-toggle" :class="{enabled:roundDraftEffectiveEnabled(round)}">
+            <input type="checkbox" v-model="round.isEnabled">
+            <span><strong>開放 Round {{ round.number }} 給學員</strong><br><span class="small">可與其他 Round 同時開啟；取消後學員仍可查看既有資料，但不能新增或修改。</span></span>
+            <span class="status-pill access-state" :class="roundDraftEffectiveEnabled(round)?'status-open':'status-closed'">{{ roundDraftAccessStatus(round) }}</span>
+          </label>
           <div class="round-setting-grid">
             <div><label class="field-label">本輪名稱</label><input type="text" v-model.trim="round.title"></div>
-            <div><label class="field-label">開始日期</label><input type="date" v-model="round.startDate"></div>
-            <div><label class="field-label">結束日期</label><input type="date" v-model="round.endDate"></div>
+            <div><label class="field-label">執行開始日期</label><input type="date" v-model="round.startDate"></div>
+            <div><label class="field-label">執行結束日期</label><input type="date" v-model="round.endDate"></div>
           </div>
+          <div class="field-help">執行日期只作為三個月份的切分依據，不會自動開啟或關閉本 Round。</div>
           <div class="round-permission-grid">
             <label class="permission-option"><input type="checkbox" v-model="round.allowGoalEdit"><span><strong>開放設定／修改目標</strong><br><span class="small">可新增目標及調整目前做法</span></span></label>
             <label class="permission-option"><input type="checkbox" v-model="round.allowLogEntry"><span><strong>開放完成紀錄</strong><br><span class="small">可新增或作廢完成紀錄</span></span></label>
             <label class="permission-option"><input type="checkbox" v-model="round.allowMonthCheck"><span><strong>開放月份勾選</strong><br><span class="small">可確認各月是否持續完成</span></span></label>
           </div>
           <label v-if="round.number===1" class="permission-option guidance" style="margin-top:9px;"><input type="checkbox" v-model="round.courseGuidanceMode"><span><strong>課程指導中</strong><br><span class="small">學員可直接改寫九宮格內容；系統保留每次課堂調整，但不計入正式「改變發展目標」次數。</span></span></label>
+          <div class="round-automation">
+            <label class="permission-option" style="background:#fff;"><input type="checkbox" v-model="round.automationEnabled"><span><strong>啟用本 Round 的時間自動化（選填）</strong><br><span class="small">只有勾選後，下方時間才會生效。可用來讓上一輪再維護 7、14 或 30 天後自動中止。</span></span></label>
+            <div v-if="round.automationEnabled" class="automation-grid">
+              <div><label class="field-label">自動開啟時間（選填）</label><input type="datetime-local" v-model="round.autoOpenAt"><div class="field-help">未填則沿用上方手動開關。</div></div>
+              <div><label class="field-label">自動中止時間（選填）</label><input type="datetime-local" v-model="round.autoCloseAt"><div class="field-help">到達時間後轉為僅可查看；講師仍可關閉自動化後重新開啟。</div></div>
+            </div>
+            <div v-if="round.automationEnabled" class="automation-quick"><button type="button" class="btn btn-ghost btn-small" @click="setRoundAutoCloseDays(round,7)">7 天後中止</button><button type="button" class="btn btn-ghost btn-small" @click="setRoundAutoCloseDays(round,14)">14 天後中止</button><button type="button" class="btn btn-ghost btn-small" @click="setRoundAutoCloseDays(round,30)">30 天後中止</button><button type="button" class="btn btn-ghost btn-small" @click="clearRoundAutomationTimes(round)">清除時間</button></div>
+            <div v-if="round.automationEnabled" class="automation-summary">{{ roundAutomationSummary(round) }}</div>
+          </div>
           <div v-if="round.startDate && round.endDate" class="period-strip">
             <div v-for="(period,index) in splitRoundPeriods(round)" :key="index" class="period-chip"><strong>第 {{ index+1 }} 個月</strong>{{ formatDateOnly(period.start) }}～{{ formatDateOnly(period.end) }}</div>
           </div>
         </div>
       </div>
       <div class="bottom-save">
-        <span class="muted small">儲存後會即時同步給所有學員。</span>
+        <span class="muted small">儲存後會即時同步給所有學員；可同時開放多個 Round。</span>
         <button class="btn btn-primary" @click="saveTeacherSettings">儲存活動設定</button>
       </div>
     </div>
@@ -643,7 +669,7 @@
         <article v-for="round in roundArray" :key="round.id" class="card" style="box-shadow:none;border-top:5px solid var(--primary);">
           <h3 style="margin-top:0;">Round {{ round.number }}｜{{ round.title }}</h3>
           <div class="muted small">{{ round.startDate && round.endDate ? `${formatDateOnly(round.startDate)} ～ ${formatDateOnly(round.endDate)}` : '期間尚未設定' }}</div>
-          <div class="small" style="margin-top:9px;line-height:1.7;"><strong>學員權限：</strong>{{ roundPermissionText(round) }}<template v-if="round.number===1"><br><strong>課程指導模式：</strong>{{ round.courseGuidanceMode ? '開啟' : '關閉' }}</template></div>
+          <div class="small" style="margin-top:9px;line-height:1.7;"><strong>Round 狀態：</strong>{{ isRoundOpen(round) ? '目前開放' : '目前中止' }}<br><strong>學員權限：</strong>{{ roundPermissionText(round) }}<template v-if="round.automationEnabled"><br><strong>時間自動化：</strong>{{ roundAutomationSummary(round) }}</template><template v-if="round.number===1"><br><strong>課程指導模式：</strong>{{ round.courseGuidanceMode ? '開啟' : '關閉' }}</template></div>
           <div style="height:1px;background:var(--line);margin:14px 0;"></div>
           <p><strong>有建立目標：</strong>{{ roundParticipantCount(round.id) }} 人</p>
           <p><strong>發展目標：</strong>{{ roundGoalCount(round.id) }} 項</p>
@@ -690,14 +716,16 @@
       <div class="student-userbar"><div><strong>{{ studentParticipant.profile?.name }}</strong><span class="muted">｜員工編號 {{ studentParticipant.profile?.employeeNo }}</span></div><button class="btn btn-ghost btn-small" @click="switchStudent">切換學員</button></div>
     </section>
     <div v-if="activitySettings.isOpen===false" class="notice notice-red"><strong>活動目前暫停使用</strong><br>您仍可查看既有資料，但暫時無法新增或變更內容。</div>
-    <nav class="round-nav"><button v-for="round in roundArray" :key="round.id" class="round-nav-btn" :class="{active:selectedRoundKey===round.id,current:isRoundOpen(round)}" @click="selectedRoundKey=round.id"><span>Round {{ round.number }}</span><small>{{ isRoundOpen(round) ? roundAccessShortText(round) : roundStatusText(round) }}</small></button></nav>
+    <nav class="round-nav"><button v-for="round in roundArray" :key="round.id" class="round-nav-btn" :class="{active:selectedRoundKey===round.id,'open-round':isRoundOpen(round),current:Number(activitySettings.currentRound)===Number(round.number)}" @click="selectedRoundKey=round.id"><span>Round {{ round.number }}</span><small>{{ isRoundOpen(round) ? roundAccessShortText(round) : roundStatusText(round) }}</small></button></nav>
     <section class="round-banner">
       <h2>Round {{ selectedRound.number }}｜{{ selectedRound.title }}</h2>
       <p>{{ selectedRound.number===1 ? '在九宮格中寫下最多九個想持續做的小改變；每格三個月都有持續，才算完成一格並可連線。' : '本輪可建立 1～5 個發展做法，持續留下完成紀錄，並在每個月份確認自己有持續。' }}</p>
       <p><strong>執行期間：</strong>{{ selectedRound.startDate && selectedRound.endDate ? `${formatDateOnly(selectedRound.startDate)} ～ ${formatDateOnly(selectedRound.endDate)}` : '講師尚未設定' }}</p>
+      <p><strong>目前狀態：</strong>{{ isRoundOpen(selectedRound) ? `已開放（${roundPermissionText(selectedRound)}）` : '目前未開放，僅可查看既有資料' }}</p>
       <div class="period-strip"><div v-for="(period,index) in splitRoundPeriods(selectedRound)" :key="index" class="period-chip"><strong>第 {{ index+1 }} 個月</strong>{{ period.start ? `${formatDateOnly(period.start)}～${formatDateOnly(period.end)}` : '期間待設定' }}</div></div>
     </section>
-    <div v-if="!canEditSelectedRound" class="notice notice-amber"><strong>此 Round 目前為查看模式</strong><br>講師尚未開放本輪的目標編修、完成紀錄或月份勾選；您仍可查看既有資料與歷程。</div>
+    <div v-if="!isRoundOpen(selectedRound)" class="notice notice-amber"><strong>此 Round 目前未開放</strong><br>講師尚未開啟本輪，您仍可查看既有資料與歷程。</div>
+    <div v-else-if="!canEditSelectedRound" class="notice notice-amber"><strong>此 Round 目前為查看模式</strong><br>本輪已開啟，但講師尚未勾選目標編修、完成紀錄或月份勾選權限。</div>
     <div v-else class="notice notice-blue"><strong>本輪目前可操作：</strong>{{ roundPermissionText(selectedRound) }}<template v-if="selectedRound.number===1 && selectedRound.courseGuidanceMode"><br><strong>課程指導中：</strong>修改九宮格會保留課堂調整歷程，但不計入正式改變目標次數。</template></div>
 
     <!-- Round 1 九宮格 -->
@@ -750,6 +778,7 @@ const ADMIN_PASSWORD = '73251209';
 const ADMIN_AUTH_KEY = 'development_admin_authenticated_until';
 const ADMIN_AUTH_HOURS = 12;
 const ROUND_KEYS = ['round1','round2','round3','round4'];
+const ROUND_PERMISSION_KEYS = ['allowGoalEdit','allowLogEntry','allowMonthCheck'];
 const clone = value => JSON.parse(JSON.stringify(value ?? null));
 const nowDateInput = () => {
   const d = new Date();
@@ -757,10 +786,10 @@ const nowDateInput = () => {
   return new Date(d.getTime() - offset * 60000).toISOString().slice(0,10);
 };
 const defaultRounds = () => ({
-  round1:{ id:'round1',number:1,title:'九宮格習慣養成',startDate:'',endDate:'',mode:'grid',maxGoals:9,courseGuidanceMode:false },
-  round2:{ id:'round2',number:2,title:'第二輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5 },
-  round3:{ id:'round3',number:3,title:'第三輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5 },
-  round4:{ id:'round4',number:4,title:'第四輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5 }
+  round1:{ id:'round1',number:1,title:'九宮格習慣養成',startDate:'',endDate:'',mode:'grid',maxGoals:9,courseGuidanceMode:false,isEnabled:true,allowGoalEdit:true,allowLogEntry:true,allowMonthCheck:true,automationEnabled:false,autoOpenAt:'',autoCloseAt:'' },
+  round2:{ id:'round2',number:2,title:'第二輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5,isEnabled:false,allowGoalEdit:false,allowLogEntry:false,allowMonthCheck:false,automationEnabled:false,autoOpenAt:'',autoCloseAt:'' },
+  round3:{ id:'round3',number:3,title:'第三輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5,isEnabled:false,allowGoalEdit:false,allowLogEntry:false,allowMonthCheck:false,automationEnabled:false,autoOpenAt:'',autoCloseAt:'' },
+  round4:{ id:'round4',number:4,title:'第四輪發展行動',startDate:'',endDate:'',mode:'list',maxGoals:5,isEnabled:false,allowGoalEdit:false,allowLogEntry:false,allowMonthCheck:false,automationEnabled:false,autoOpenAt:'',autoCloseAt:'' }
 });
 const normalizeSettings = value => ({
   title:value?.title || '個人發展行動追蹤',
@@ -770,9 +799,29 @@ const normalizeSettings = value => ({
   requireLogBeforeCheck:value?.requireLogBeforeCheck !== false,
   createdAt:value?.createdAt || Date.now()
 });
-const normalizeRounds = value => {
+const normalizeRounds = (value,currentRound=1) => {
   const defaults = defaultRounds();
-  ROUND_KEYS.forEach(key => { if (value?.[key]) defaults[key] = { ...defaults[key], ...value[key], id:key, number:Number(value[key].number)||defaults[key].number }; });
+  ROUND_KEYS.forEach(key => {
+    const raw=value?.[key];
+    if(!raw)return;
+    const base=defaults[key];
+    const number=Number(raw.number)||base.number;
+    const merged={...base,...raw,id:key,number};
+    const hasMaster=typeof raw.isEnabled==='boolean';
+    const anyPermissionEnabled=ROUND_PERMISSION_KEYS.some(field=>raw[field]===true);
+    const legacyCurrentRound=!hasMaster && Number(currentRound)===number;
+    merged.isEnabled=hasMaster?raw.isEnabled:(anyPermissionEnabled||legacyCurrentRound);
+    if(legacyCurrentRound && !anyPermissionEnabled){
+      ROUND_PERMISSION_KEYS.forEach(field=>{merged[field]=true;});
+    }else{
+      ROUND_PERMISSION_KEYS.forEach(field=>{merged[field]=raw[field]===true;});
+    }
+    merged.automationEnabled=raw.automationEnabled===true;
+    merged.autoOpenAt=typeof raw.autoOpenAt==='string'?raw.autoOpenAt:'';
+    merged.autoCloseAt=typeof raw.autoCloseAt==='string'?raw.autoCloseAt:'';
+    if(key==='round1')merged.courseGuidanceMode=raw.courseGuidanceMode===true;
+    defaults[key]=merged;
+  });
   return defaults;
 };
 
@@ -781,6 +830,7 @@ const app = createApp({
     return {
       isLoading:true,
       toastMsg:'',
+      nowTick:Date.now(),
       currentView:'login',
       loginPassword:'',
       activityId:'',
@@ -859,6 +909,7 @@ const app = createApp({
     }
   },
   mounted() {
+    this._accessTimer=setInterval(()=>{this.nowTick=Date.now();},30000);
     const params = new URLSearchParams(location.search);
     const activityId = params.get('activity');
     const role = params.get('role');
@@ -874,7 +925,7 @@ const app = createApp({
       this.attachPublicActivity().then(()=>this.tryRestoreStudent());
     }
   },
-  beforeUnmount() { this.detachAll(); },
+  beforeUnmount() { clearInterval(this._accessTimer); this.detachAll(); },
   methods: {
     showToast(msg) { this.toastMsg=msg; clearTimeout(this._toastTimer); this._toastTimer=setTimeout(()=>this.toastMsg='',3400); },
     askConfirm(message,action) { this.confirmBox={show:true,message,action}; },
@@ -886,17 +937,28 @@ const app = createApp({
       return db.ref(`developmentActivities/${this.activityId}/settings`).once('value').then(snap=>{
         if (!snap.exists()) { this.currentView='studentNotFound'; this.isLoading=false; return false; }
         this.activitySettings=normalizeSettings(snap.val());
-        this.attach(db.ref(`developmentActivities/${this.activityId}/settings`),'value',s=>{ if(s.exists()) this.activitySettings=normalizeSettings(s.val()); });
-        this.attach(db.ref(`developmentActivities/${this.activityId}/rounds`),'value',s=>{ this.rounds=normalizeRounds(s.val()||{}); });
+        this.selectedRoundKey=`round${this.activitySettings.currentRound}`;
+        this.attach(db.ref(`developmentActivities/${this.activityId}/settings`),'value',s=>{
+          if(!s.exists())return;
+          const previousRound=Number(this.activitySettings.currentRound)||1;
+          this.activitySettings=normalizeSettings(s.val());
+          this.handleCurrentRoundSync(previousRound);
+        });
+        this.attach(db.ref(`developmentActivities/${this.activityId}/rounds`),'value',s=>{ this.rounds=normalizeRounds(s.val()||{},this.activitySettings.currentRound); });
         this.isLoading=false; return true;
       }).catch(err=>{ this.isLoading=false; this.showToast('❌ 無法載入活動：'+err.message); return false; });
     },
     attachTeacherActivity() {
       this.detachAll(); this.isLoading=true;
       const root=db.ref(`developmentActivities/${this.activityId}`);
-      this.attach(root.child('settings'),'value',s=>{ if(!s.exists()){this.showToast('找不到活動');return;} this.activitySettings=normalizeSettings(s.val()); this.isLoading=false; });
-      this.attach(root.child('rounds'),'value',s=>{ this.rounds=normalizeRounds(s.val()||{}); });
-      this.attach(root.child('participants'),'value',s=>{ this.participants=s.val()||{}; });
+      root.child('settings').once('value').then(s=>{
+        if(!s.exists()){this.showToast('找不到活動');this.isLoading=false;return;}
+        this.activitySettings=normalizeSettings(s.val());
+        this.attach(root.child('settings'),'value',settingSnap=>{if(settingSnap.exists())this.activitySettings=normalizeSettings(settingSnap.val());});
+        this.attach(root.child('rounds'),'value',roundSnap=>{this.rounds=normalizeRounds(roundSnap.val()||{},this.activitySettings.currentRound);});
+        this.attach(root.child('participants'),'value',participantSnap=>{this.participants=participantSnap.val()||{};});
+        this.isLoading=false;
+      }).catch(err=>{this.isLoading=false;this.showToast('❌ 無法載入活動：'+err.message);});
     },
     hasAdminAuthentication(){return Number(localStorage.getItem(ADMIN_AUTH_KEY)||0)>Date.now();},
     rememberAdminAuthentication(){localStorage.setItem(ADMIN_AUTH_KEY,String(Date.now()+ADMIN_AUTH_HOURS*60*60*1000));},
@@ -916,7 +978,7 @@ const app = createApp({
       const name=this.newActivityName.trim(); if(!name) return this.showToast('請先輸入活動名稱');
       const listRef=db.ref('developmentActivitiesList').push(); const id=listRef.key; const now=Date.now();
       const settings=normalizeSettings({title:name,createdAt:now,currentRound:1,isOpen:true,requireLogBeforeCheck:true});
-      const rounds=defaultRounds();rounds.round1.allowGoalEdit=true;rounds.round1.allowLogEntry=true;rounds.round1.allowMonthCheck=true;ROUND_KEYS.slice(1).forEach(k=>{rounds[k].allowGoalEdit=false;rounds[k].allowLogEntry=false;rounds[k].allowMonthCheck=false;});
+      const rounds=defaultRounds();
       const updates={}; updates[`developmentActivitiesList/${id}`]={name,createdAt:now,archived:false}; updates[`developmentActivities/${id}/settings`]=settings; updates[`developmentActivities/${id}/rounds`]=rounds;
       try { await db.ref().update(updates); this.newActivityName=''; this.showToast('✅ 活動建立完成'); } catch(err){ this.showToast('❌ 建立失敗：'+err.message); }
     },
@@ -926,15 +988,24 @@ const app = createApp({
     copyCurrentStudentLink(){this.copyText(this.getActivityLink(this.activityId,'student'));},
     openRename(activity){this.renameBox={show:true,id:activity.id,name:activity.name};},
     async confirmRename(){const name=this.renameBox.name.trim();if(!name)return this.showToast('活動名稱不能空白');const id=this.renameBox.id;await db.ref().update({[`developmentActivitiesList/${id}/name`]:name,[`developmentActivities/${id}/settings/title`]:name});this.renameBox.show=false;this.showToast('✅ 已重新命名');},
-    duplicateActivity(activity){this.askConfirm(`確定複製「${activity.name}」嗎？會複製活動與四輪期間設定，但不會複製任何學員資料。`,async()=>{const snap=await db.ref(`developmentActivities/${activity.id}`).once('value');const source=snap.val()||{};const id=db.ref('developmentActivitiesList').push().key;const name=`${activity.name}（複製）`;const now=Date.now();await db.ref().update({[`developmentActivitiesList/${id}`]:{name,createdAt:now,archived:false},[`developmentActivities/${id}/settings`]:{...normalizeSettings(source.settings||{}),title:name,createdAt:now},[`developmentActivities/${id}/rounds`]:normalizeRounds(source.rounds||{})});this.showToast('✅ 活動已複製');});},
+    duplicateActivity(activity){this.askConfirm(`確定複製「${activity.name}」嗎？會複製活動與四輪期間設定，但不會複製任何學員資料。`,async()=>{const snap=await db.ref(`developmentActivities/${activity.id}`).once('value');const source=snap.val()||{};const sourceSettings=normalizeSettings(source.settings||{});const id=db.ref('developmentActivitiesList').push().key;const name=`${activity.name}（複製）`;const now=Date.now();await db.ref().update({[`developmentActivitiesList/${id}`]:{name,createdAt:now,archived:false},[`developmentActivities/${id}/settings`]:{...sourceSettings,title:name,createdAt:now},[`developmentActivities/${id}/rounds`]:normalizeRounds(source.rounds||{},sourceSettings.currentRound)});this.showToast('✅ 活動已複製');});},
     toggleArchive(activity){const archived=!activity.archived;db.ref(`developmentActivitiesList/${activity.id}/archived`).set(archived).then(()=>this.showToast(archived?'📦 活動已封存':'✅ 已解除封存'));},
     deleteActivity(activity){this.askConfirm(`確定刪除「${activity.name}」？所有學員、目標、完成紀錄與歷程都會一併刪除，且無法復原。`,async()=>{await db.ref().update({[`developmentActivitiesList/${activity.id}`]:null,[`developmentActivities/${activity.id}`]:null});this.showToast('🗑️ 活動已刪除');});},
-    openTeacherSettings(){this.settingsDraft=clone(this.activitySettings);this.roundDrafts=normalizeRounds(clone(this.rounds));this.roundDraftArray.forEach(r=>{r.allowGoalEdit=this.roundPermission(r,'allowGoalEdit');r.allowLogEntry=this.roundPermission(r,'allowLogEntry');r.allowMonthCheck=this.roundPermission(r,'allowMonthCheck');if(r.number===1)r.courseGuidanceMode=!!r.courseGuidanceMode;});this.showTeacherSettings=true;},
+    openTeacherSettings(){this.settingsDraft=clone(this.activitySettings);this.roundDrafts=normalizeRounds(clone(this.rounds),this.settingsDraft.currentRound);this.roundDraftArray.forEach(r=>{r.isEnabled=!!r.isEnabled;r.automationEnabled=!!r.automationEnabled;ROUND_PERMISSION_KEYS.forEach(field=>{r[field]=!!r[field];});if(r.number===1)r.courseGuidanceMode=!!r.courseGuidanceMode;});this.showTeacherSettings=true;},
+    onCurrentRoundChanged(){
+      const key=`round${Number(this.settingsDraft.currentRound)||1}`;const round=this.roundDrafts[key];if(!round)return;
+      round.isEnabled=true;ROUND_PERMISSION_KEYS.forEach(field=>{round[field]=true;});
+      const now=Date.now();if(round.autoOpenAt&&this.dateTimeValue(round.autoOpenAt)>now)round.autoOpenAt='';if(round.autoCloseAt&&this.dateTimeValue(round.autoCloseAt)<=now)round.autoCloseAt='';
+    },
     async saveTeacherSettings(){
       const title=(this.settingsDraft.title||'').trim(); if(!title)return this.showToast('活動名稱不能空白');
-      for(const round of this.roundDraftArray){if(round.startDate&&round.endDate&&round.startDate>round.endDate)return this.showToast(`Round ${round.number} 的結束日期不能早於開始日期`);}
-      const cleanSettings=normalizeSettings({...this.settingsDraft,title}); const cleanRounds=normalizeRounds(this.roundDrafts);ROUND_KEYS.forEach(k=>{cleanRounds[k].allowGoalEdit=!!cleanRounds[k].allowGoalEdit;cleanRounds[k].allowLogEntry=!!cleanRounds[k].allowLogEntry;cleanRounds[k].allowMonthCheck=!!cleanRounds[k].allowMonthCheck;if(k==='round1')cleanRounds[k].courseGuidanceMode=!!cleanRounds[k].courseGuidanceMode;});
-      try{await db.ref().update({[`developmentActivities/${this.activityId}/settings`]:cleanSettings,[`developmentActivities/${this.activityId}/rounds`]:cleanRounds,[`developmentActivitiesList/${this.activityId}/name`]:title});this.showTeacherSettings=false;this.showToast('✅ 活動設定已儲存');}catch(err){this.showToast('❌ 儲存失敗：'+err.message);}
+      for(const round of this.roundDraftArray){
+        if(round.startDate&&round.endDate&&round.startDate>round.endDate)return this.showToast(`Round ${round.number} 的結束日期不能早於開始日期`);
+        const openAt=this.dateTimeValue(round.autoOpenAt);const closeAt=this.dateTimeValue(round.autoCloseAt);
+        if(round.automationEnabled&&openAt&&closeAt&&openAt>=closeAt)return this.showToast(`Round ${round.number} 的自動中止時間必須晚於自動開啟時間`);
+      }
+      const cleanSettings=normalizeSettings({...this.settingsDraft,title}); const cleanRounds=normalizeRounds(this.roundDrafts,cleanSettings.currentRound);ROUND_KEYS.forEach(k=>{cleanRounds[k].isEnabled=!!cleanRounds[k].isEnabled;cleanRounds[k].automationEnabled=!!cleanRounds[k].automationEnabled;ROUND_PERMISSION_KEYS.forEach(field=>{cleanRounds[k][field]=!!cleanRounds[k][field];});if(k==='round1')cleanRounds[k].courseGuidanceMode=!!cleanRounds[k].courseGuidanceMode;});
+      try{await db.ref().update({[`developmentActivities/${this.activityId}/settings`]:cleanSettings,[`developmentActivities/${this.activityId}/rounds`]:cleanRounds,[`developmentActivitiesList/${this.activityId}/name`]:title});this.showTeacherSettings=false;this.showToast('✅ 活動設定已儲存，學員權限已同步');}catch(err){this.showToast('❌ 儲存失敗：'+err.message);}
     },
     normalizeName(v){return String(v||'').trim().replace(/\s+/g,' ');},
     normalizeEmployee(v){return String(v||'').trim().replace(/\s+/g,'').toUpperCase();},
@@ -945,7 +1016,7 @@ const app = createApp({
     tryRestoreStudent(){
       if(this.currentView==='studentNotFound')return;
       const id=localStorage.getItem(this.studentStorageKey()); if(!id){this.currentView='studentLogin';return;}
-      this.isLoading=true;this.resolveParticipantId(id).then(resolvedId=>{if(resolvedId){localStorage.setItem(this.studentStorageKey(),resolvedId);this.participantId=resolvedId;this.currentView='student';this.attachStudentParticipant();return;}localStorage.removeItem(this.studentStorageKey());this.currentView='studentLogin';this.isLoading=false;}).catch(()=>{this.currentView='studentLogin';this.isLoading=false;});
+      this.isLoading=true;this.resolveParticipantId(id).then(resolvedId=>{if(resolvedId){localStorage.setItem(this.studentStorageKey(),resolvedId);this.participantId=resolvedId;this.currentView='student';this.syncSelectedRoundToCurrent(true);this.attachStudentParticipant();return;}localStorage.removeItem(this.studentStorageKey());this.currentView='studentLogin';this.isLoading=false;}).catch(()=>{this.currentView='studentLogin';this.isLoading=false;});
     },
     async studentLogin(){
       if(this.activitySettings.isOpen===false)return this.showToast('活動目前尚未開放');
@@ -960,7 +1031,7 @@ const app = createApp({
         }else{
           await ref.set({profile:{name,employeeNo,createdAt:Date.now(),lastLoginAt:Date.now(),updatedAt:Date.now()},roundData:{},audit:{}});
         }
-        localStorage.setItem(this.studentStorageKey(),id);this.participantId=id;this.studentLoginForm={name:'',employeeNo:''};this.currentView='student';this.attachStudentParticipant();
+        localStorage.setItem(this.studentStorageKey(),id);this.participantId=id;this.studentLoginForm={name:'',employeeNo:''};this.currentView='student';this.syncSelectedRoundToCurrent(true);this.attachStudentParticipant();
       }catch(err){this.isLoading=false;this.showToast('❌ 無法進入：'+err.message);}
     },
     attachStudentParticipant(){
@@ -968,10 +1039,31 @@ const app = createApp({
       this.attach(ref,'value',snap=>{if(!snap.exists()){this.resolveParticipantId(listeningId).then(resolvedId=>{if(resolvedId&&resolvedId!==listeningId){localStorage.setItem(this.studentStorageKey(),resolvedId);this.participantId=resolvedId;this.attachStudentParticipant();return;}localStorage.removeItem(this.studentStorageKey());this.currentView='studentLogin';this.studentParticipant={profile:{},roundData:{}};this.isLoading=false;});}else{this.studentParticipant={profile:{},roundData:{},...snap.val()};this.isLoading=false;}});
     },
     switchStudent(){this.askConfirm('確定要在這台裝置切換另一位學員嗎？目前資料會保留在雲端。',()=>{localStorage.removeItem(this.studentStorageKey());this.participantId='';this.studentParticipant={profile:{},roundData:{}};this.detachAll();this.currentView='studentLogin';this.attachPublicActivity();});},
-    roundPermission(round,field){if(!round)return false;if(typeof round[field]==='boolean')return round[field];return Number(this.activitySettings.currentRound)===Number(round.number);},
-    isRoundOpen(round){return this.activitySettings.isOpen!==false && (this.roundPermission(round,'allowGoalEdit')||this.roundPermission(round,'allowLogEntry')||this.roundPermission(round,'allowMonthCheck'));},
+    dateTimeValue(value){if(!value)return 0;const d=new Date(value);return Number.isNaN(d.getTime())?0:d.getTime();},
+    roundEffectiveEnabled(round,now=this.nowTick){
+      if(!round)return false;let enabled=round.isEnabled===true;
+      if(round.automationEnabled===true){const openAt=this.dateTimeValue(round.autoOpenAt);const closeAt=this.dateTimeValue(round.autoCloseAt);if(openAt&&now<openAt)enabled=false;if(openAt&&now>=openAt)enabled=true;if(closeAt&&now>=closeAt)enabled=false;}
+      return enabled;
+    },
+    roundDraftEffectiveEnabled(round){return this.roundEffectiveEnabled(round,Date.now());},
+    roundDraftAccessStatus(round){return this.roundDraftEffectiveEnabled(round)?'目前開放':'目前中止';},
+    roundPermission(round,field){return !!round&&this.roundEffectiveEnabled(round)&&round[field]===true;},
+    isRoundOpen(round){return this.activitySettings.isOpen!==false&&this.roundEffectiveEnabled(round);},
     roundPermissionText(round){const items=[];if(this.roundPermission(round,'allowGoalEdit'))items.push('設定／修改目標');if(this.roundPermission(round,'allowLogEntry'))items.push('完成紀錄');if(this.roundPermission(round,'allowMonthCheck'))items.push('月份勾選');return items.join('、')||'僅可查看';},
-    roundAccessShortText(round){const count=['allowGoalEdit','allowLogEntry','allowMonthCheck'].filter(k=>this.roundPermission(round,k)).length;return count===3?'全部可操作':count===0?'查看模式':`${count} 項可操作`;},
+    roundAccessShortText(round){const count=ROUND_PERMISSION_KEYS.filter(k=>this.roundPermission(round,k)).length;return count===3?'全部可操作':count===0?'僅可查看':`${count} 項可操作`;},
+    toDateTimeLocal(d){const pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;},
+    setRoundAutoCloseDays(round,days){round.automationEnabled=true;round.isEnabled=true;round.autoCloseAt=this.toDateTimeLocal(new Date(Date.now()+Number(days)*86400000));},
+    clearRoundAutomationTimes(round){round.autoOpenAt='';round.autoCloseAt='';},
+    roundAutomationSummary(round){
+      if(!round?.automationEnabled)return '未啟用';const parts=[];
+      if(round.autoOpenAt)parts.push(`預定 ${this.formatDateTime(round.autoOpenAt)} 自動開啟`);
+      if(round.autoCloseAt)parts.push(`預定 ${this.formatDateTime(round.autoCloseAt)} 自動中止`);
+      if(!parts.length)parts.push('已啟用，但尚未設定自動時間（目前沿用手動開關）');
+      if(!this.roundEffectiveEnabled(round,Date.now())&&round.autoCloseAt&&this.dateTimeValue(round.autoCloseAt)<=Date.now())parts.push('目前已依排程中止');
+      return parts.join('；');
+    },
+    syncSelectedRoundToCurrent(force=false){const key=`round${Number(this.activitySettings.currentRound)||1}`;if(force||!this.selectedRoundKey||!this.roundEffectiveEnabled(this.rounds[this.selectedRoundKey]))this.selectedRoundKey=key;},
+    handleCurrentRoundSync(previousRound){const current=Number(this.activitySettings.currentRound)||1;const previous=Number(previousRound)||1;if(this.currentView==='student'&&(this.selectedRoundKey===`round${previous}`||!this.roundEffectiveEnabled(this.rounds[this.selectedRoundKey])))this.selectedRoundKey=`round${current}`;},
     studentGoalArray(roundKey){const goals=this.studentParticipant?.roundData?.[roundKey]?.goals||{};return Object.keys(goals).map(id=>({id,...goals[id]})).sort((a,b)=>(Number(a.slotIndex)||999)-(Number(b.slotIndex)||999)||(a.createdAt||0)-(b.createdAt||0));},
     participantGoalArray(participant,roundKey){const goals=participant?.roundData?.[roundKey]?.goals||{};return Object.keys(goals).map(id=>({id,...goals[id]})).sort((a,b)=>(Number(a.slotIndex)||999)-(Number(b.slotIndex)||999)||(a.createdAt||0)-(b.createdAt||0));},
     versionArray(goal){const versions=goal?.versions||{};return Object.keys(versions).map(id=>({id,...versions[id]})).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));},
@@ -1045,7 +1137,7 @@ const app = createApp({
     dateToInput(d){const offset=d.getTimezoneOffset();return new Date(d.getTime()-offset*60000).toISOString().slice(0,10);},
     formatDateOnly(value){if(!value)return '—';const d=this.parseLocalDate(value);if(!d)return String(value);return d.toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'});},
     formatDateTime(value){if(!value)return '—';const d=new Date(value);if(Number.isNaN(d.getTime()))return '—';return d.toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});},
-    roundStatusText(round){if(!round.startDate||!round.endDate)return '期間待設定';const today=nowDateInput();if(today<round.startDate)return '尚未開始';if(today>round.endDate)return '已結束';return '執行期間中';},
+    roundStatusText(round){return this.activitySettings.isOpen===false?'活動暫停':'目前未開放';},
     versionTypeText(type){return type==='direction'?'更換方向':type==='adjustment'?'調整做法':type==='course_guidance'?'課程指導中調整':'最初建立';},
     auditTypeText(type){const map={teacherCorrection:'講師修正目標',teacherMonthCheck:'講師調整月份勾選',identityCorrection:'講師修正姓名／員編',courseGuidanceEdit:'學員課程指導中調整'};return map[type]||type||'其他';},
     participantGoalCount(p){return ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).length,0);},
@@ -1088,15 +1180,15 @@ const app = createApp({
     async exportJson(){try{const snap=await db.ref(`developmentActivities/${this.activityId}`).once('value');const payload={exportedAt:new Date().toISOString(),activityId:this.activityId,activity:snap.val()||{}};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`發展追蹤_${this.sanitizeFileName(this.activitySettings.title)}_${nowDateInput()}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);this.showToast('✅ JSON 完整備份已匯出');}catch(err){this.showToast('❌ JSON 匯出失敗：'+err.message);}},
     exportExcel(){
       if(typeof XLSX==='undefined')return this.showToast('❌ Excel 元件尚未載入');
-      const instructionRows=[['個人發展行動追蹤系統－匯出資料說明'],['本活頁簿完整保留四輪開放權限、九宮格、目標版本、課程指導中調整、完成紀錄、每月勾選及講師修正歷程。'],['「正式改變目標」只計算調整做法與更換方向；Round 1 課程指導中直接改寫會另列為「課程中調整」，不納入正式改變次數。'],['作廢完成紀錄仍保留於「完成紀錄」工作表，但不計入有效紀錄數。'],['匯出時間',this.formatDateTime(Date.now())]];
+      const instructionRows=[['個人發展行動追蹤系統－匯出資料說明'],['本活頁簿完整保留四輪獨立開關、時間自動化、操作權限、九宮格、目標版本、課程指導中調整、完成紀錄、每月勾選及講師修正歷程。'],['「正式改變目標」只計算調整做法與更換方向；Round 1 課程指導中直接改寫會另列為「課程中調整」，不納入正式改變次數。'],['作廢完成紀錄仍保留於「完成紀錄」工作表，但不計入有效紀錄數。'],['匯出時間',this.formatDateTime(Date.now())]];
       const settingsRows=[['類別','欄位','內容'],['活動','活動名稱',this.activitySettings.title],['活動','學員說明',this.activitySettings.introText],['活動','講師後台主要顯示 Round',this.activitySettings.currentRound],['活動','活動開放',this.activitySettings.isOpen===false?'否':'是'],['活動','勾選前需有紀錄',this.activitySettings.requireLogBeforeCheck===false?'否':'是']];
-      this.roundArray.forEach(r=>{const periods=this.splitRoundPeriods(r);settingsRows.push([`Round ${r.number}`,'名稱',r.title],[`Round ${r.number}`,'執行期間',`${r.startDate||''}～${r.endDate||''}`],[`Round ${r.number}`,'開放設定／修改目標',this.roundPermission(r,'allowGoalEdit')?'是':'否'],[`Round ${r.number}`,'開放完成紀錄',this.roundPermission(r,'allowLogEntry')?'是':'否'],[`Round ${r.number}`,'開放月份勾選',this.roundPermission(r,'allowMonthCheck')?'是':'否'],[`Round ${r.number}`,'課程指導中',r.number===1?(r.courseGuidanceMode?'是':'否'):'不適用'],[`Round ${r.number}`,'第1月',periods[0].start?`${periods[0].start}～${periods[0].end}`:''],[`Round ${r.number}`,'第2月',periods[1].start?`${periods[1].start}～${periods[1].end}`:''],[`Round ${r.number}`,'第3月',periods[2].start?`${periods[2].start}～${periods[2].end}`:'']);});
+      this.roundArray.forEach(r=>{const periods=this.splitRoundPeriods(r);settingsRows.push([`Round ${r.number}`,'名稱',r.title],[`Round ${r.number}`,'執行期間',`${r.startDate||''}～${r.endDate||''}`],[`Round ${r.number}`,'目前有效開放',this.isRoundOpen(r)?'是':'否'],[`Round ${r.number}`,'手動開放設定',r.isEnabled?'是':'否'],[`Round ${r.number}`,'開放設定／修改目標',this.roundPermission(r,'allowGoalEdit')?'是':'否'],[`Round ${r.number}`,'開放完成紀錄',this.roundPermission(r,'allowLogEntry')?'是':'否'],[`Round ${r.number}`,'開放月份勾選',this.roundPermission(r,'allowMonthCheck')?'是':'否'],[`Round ${r.number}`,'時間自動化',r.automationEnabled?'是':'否'],[`Round ${r.number}`,'自動開啟時間',r.autoOpenAt||''],[`Round ${r.number}`,'自動中止時間',r.autoCloseAt||''],[`Round ${r.number}`,'課程指導中',r.number===1?(r.courseGuidanceMode?'是':'否'):'不適用'],[`Round ${r.number}`,'第1月',periods[0].start?`${periods[0].start}～${periods[0].end}`:''],[`Round ${r.number}`,'第2月',periods[1].start?`${periods[1].start}～${periods[1].end}`:''],[`Round ${r.number}`,'第3月',periods[2].start?`${periods[2].start}～${periods[2].end}`:'']);});
       const participantRows=[],roundProgressRows=[],round1OverviewRows=[],round1DetailRows=[],currentGoalRows=[],versionRows=[],logRows=[],checkRows=[],auditRows=[];
       this.participantArray.forEach(p=>{
         const voidedLogs=ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).reduce((x,g)=>x+this.logArray(g).filter(l=>l.voided).length,0),0);
         const overview={'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','建立時間':this.formatDateTime(p.profile?.createdAt),'最後登入':this.formatDateTime(p.profile?.lastLoginAt),'最後活動':this.formatDateTime(this.participantLastActivity(p)),'全部目標數':this.participantGoalCount(p),'有效完成紀錄':this.participantLogCount(p),'作廢紀錄':voidedLogs,'月份勾選':this.participantCheckCount(p),'正式改變目標':this.participantChangeCount(p),'課程中調整':this.participantGuidanceCount(p),'Round1完成格':this.participantBingoCompletedCells(p),'Round1連線數':this.participantBingoLines(p),'Round1連線位置':this.participantBingoLineNames(p)};
         ROUND_KEYS.forEach(k=>{const no=k.replace('round','');overview[`R${no}目標`]=this.participantGoalArray(p,k).length;overview[`R${no}有效紀錄`]=this.participantGoalArray(p,k).reduce((s,g)=>s+this.activeLogArray(g).length,0);overview[`R${no}月份勾選`]=this.participantGoalArray(p,k).reduce((s,g)=>s+this.checkedMonthCount(g),0);});participantRows.push(overview);
-        ROUND_KEYS.forEach(roundKey=>{const round=this.rounds[roundKey];const goals=this.participantGoalArray(p,roundKey);roundProgressRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'Round名稱':round.title,'執行期間':round.startDate&&round.endDate?`${round.startDate}～${round.endDate}`:'','本輪開放權限':this.roundPermissionText(round),'目標數':goals.length,'有效紀錄':goals.reduce((s,g)=>s+this.activeLogArray(g).length,0),'作廢紀錄':goals.reduce((s,g)=>s+this.logArray(g).filter(l=>l.voided).length,0),'月份勾選':goals.reduce((s,g)=>s+this.checkedMonthCount(g),0),'三月皆完成目標':goals.filter(g=>this.checkedMonthCount(g)===3).length,'正式改變目標':goals.reduce((s,g)=>s+this.goalOfficialChangeCount(g),0),'課程中調整':goals.reduce((s,g)=>s+this.goalGuidanceEditCount(g),0),'九宮格完成格':round.number===1?this.participantBingoCompletedCells(p):'','九宮格連線數':round.number===1?this.participantBingoLines(p):''});});
+        ROUND_KEYS.forEach(roundKey=>{const round=this.rounds[roundKey];const goals=this.participantGoalArray(p,roundKey);roundProgressRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'Round名稱':round.title,'執行期間':round.startDate&&round.endDate?`${round.startDate}～${round.endDate}`:'','Round開放狀態':this.isRoundOpen(round)?'開放':'中止','本輪開放權限':this.roundPermissionText(round),'目標數':goals.length,'有效紀錄':goals.reduce((s,g)=>s+this.activeLogArray(g).length,0),'作廢紀錄':goals.reduce((s,g)=>s+this.logArray(g).filter(l=>l.voided).length,0),'月份勾選':goals.reduce((s,g)=>s+this.checkedMonthCount(g),0),'三月皆完成目標':goals.filter(g=>this.checkedMonthCount(g)===3).length,'正式改變目標':goals.reduce((s,g)=>s+this.goalOfficialChangeCount(g),0),'課程中調整':goals.reduce((s,g)=>s+this.goalGuidanceEditCount(g),0),'九宮格完成格':round.number===1?this.participantBingoCompletedCells(p):'','九宮格連線數':round.number===1?this.participantBingoLines(p):''});});
         const slots=this.participantRound1Slots(p);const r1row={'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','完成格數':this.participantBingoCompletedCells(p),'連線數':this.participantBingoLines(p),'連線位置':this.participantBingoLineNames(p),'正式改變目標':this.participantRoundChangeCount(p,'round1'),'課程中調整':this.participantRoundGuidanceCount(p,'round1')};slots.forEach(slot=>{const g=slot.goal;r1row[`第${slot.index}格_做法`]=g?(this.currentVersion(g)?.action||''):'';r1row[`第${slot.index}格_完成`]=g&&this.checkedMonthCount(g)===3?'✓':'';});round1OverviewRows.push(r1row);
         slots.forEach(slot=>{const g=slot.goal;round1DetailRows.push({'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','九宮格位置':slot.index,'目前發展做法':g?(this.currentVersion(g)?.action||''):'','執行節奏':g?(this.currentVersion(g)?.frequency||''):'','版本數':g?this.versionArray(g).length:0,'正式改變目標':g?this.goalOfficialChangeCount(g):0,'課程中調整':g?this.goalGuidanceEditCount(g):0,'有效完成紀錄':g?this.activeLogArray(g).length:0,'作廢紀錄':g?this.logArray(g).filter(l=>l.voided).length:0,'第1月勾選':g?.monthlyChecks?.month1?.checked?'是':'否','第2月勾選':g?.monthlyChecks?.month2?.checked?'是':'否','第3月勾選':g?.monthlyChecks?.month3?.checked?'是':'否','三月皆完成':g&&this.checkedMonthCount(g)===3?'是':'否','是否形成連線':g&&this.participantBingoLineDefs(p).some(line=>line.cells.includes(slot.index))?'是':'否'});});
         ROUND_KEYS.forEach(roundKey=>this.participantGoalArray(p,roundKey).forEach(g=>{
@@ -1114,7 +1206,7 @@ const app = createApp({
       add('使用說明',XLSX.utils.aoa_to_sheet(instructionRows),[110,28]);
       add('活動與開放設定',XLSX.utils.aoa_to_sheet(settingsRows),[18,28,85]);
       add('學員總覽',sheetFromRows(participantRows,Object.keys(participantRows[0]||{'姓名':'','員工編號':''})),[15,16,20,20,20,11,12,10,12,14,12,13,12,22,9,11,9,11,9,11,9,11]);
-      add('各輪學員進度',sheetFromRows(roundProgressRows,['姓名','員工編號','Round','Round名稱','執行期間','本輪開放權限','目標數','有效紀錄','作廢紀錄','月份勾選','三月皆完成目標','正式改變目標','課程中調整','九宮格完成格','九宮格連線數']),[15,16,8,24,24,35,9,10,10,10,14,13,12,12,12]);
+      add('各輪學員進度',sheetFromRows(roundProgressRows,['姓名','員工編號','Round','Round名稱','執行期間','Round開放狀態','本輪開放權限','目標數','有效紀錄','作廢紀錄','月份勾選','三月皆完成目標','正式改變目標','課程中調整','九宮格完成格','九宮格連線數']),[15,16,8,24,24,12,35,9,10,10,10,14,13,12,12,12]);
       add('Round1九宮格總覽',sheetFromRows(round1OverviewRows,Object.keys(round1OverviewRows[0]||{'姓名':'','員工編號':''})),[15,16,10,10,24,13,12,...Array(18).fill(34)]);
       add('Round1九宮格明細',sheetFromRows(round1DetailRows,['姓名','員工編號','九宮格位置','目前發展做法','執行節奏','版本數','正式改變目標','課程中調整','有效完成紀錄','作廢紀錄','第1月勾選','第2月勾選','第3月勾選','三月皆完成','是否形成連線']),[15,16,11,55,28,8,13,12,12,10,11,11,11,11,12]);
       add('目前發展目標',sheetFromRows(currentGoalRows,['姓名','員工編號','Round','Round名稱','九宮格位置','目標ID','目前發展做法','執行節奏','版本數','正式改變目標','課程中調整','有效完成紀錄','作廢紀錄','月份勾選','三月皆完成','建立時間','最後更新']),[15,16,8,24,11,20,58,28,8,13,12,12,10,10,11,20,20]);
