@@ -736,16 +736,8 @@
     </section>
     <div v-if="activitySettings.isOpen===false" class="notice notice-red"><strong>活動目前暫停使用</strong><br>您仍可查看既有資料，但暫時無法新增或變更內容。</div>
     <nav class="round-nav"><button v-for="round in roundArray" :key="round.id" class="round-nav-btn" :class="{active:selectedRoundKey===round.id,'open-round':isRoundOpen(round),current:Number(activitySettings.currentRound)===Number(round.number)}" @click="selectStudentRound(round.id)"><span>Round {{ round.number }}</span><small>{{ isRoundOpen(round) ? roundAccessShortText(round) : roundStatusText(round) }}</small></button></nav>
-    <section class="round-banner">
-      <h2>Round {{ selectedRound.number }}｜{{ selectedRound.title }}</h2>
-      <p>{{ selectedRound.number===1 ? '先設定 1～2 個真正想持續的發展項目，並記錄這三個月的完成情形。' : '前一輪的發展項目會自動延續到本輪；本輪的三個月完成狀態與紀錄重新開始，並可再新增 1～3 項。' }}</p>
-      <p><strong>執行期間：</strong>{{ selectedRound.startDate && selectedRound.endDate ? `${formatDateOnly(selectedRound.startDate)} ～ ${formatDateOnly(selectedRound.endDate)}` : '講師尚未設定' }}</p>
-      <p><strong>目前狀態：</strong>{{ isRoundOpen(selectedRound) ? `已開放（${roundPermissionText(selectedRound)}）` : '目前未開放，僅可查看既有資料' }}</p>
-      <div class="period-strip"><div v-for="(period,index) in splitRoundPeriods(selectedRound)" :key="index" class="period-chip"><strong>第 {{ index+1 }} 個月</strong>{{ period.start ? `${formatDateOnly(period.start)}～${formatDateOnly(period.end)}` : '期間待設定' }}</div></div>
-    </section>
-    <div v-if="!isRoundOpen(selectedRound)" class="notice notice-amber"><strong>此 Round 目前未開放</strong><br>講師尚未開啟本輪，您仍可查看既有資料與歷程。</div>
-    <div v-else-if="!canEditSelectedRound" class="notice notice-amber"><strong>此 Round 目前為查看模式</strong><br>本輪已開啟，但講師尚未勾選目標編修、完成紀錄或月份勾選權限。</div>
-    <div v-else class="notice notice-blue"><strong>本輪目前可操作：</strong>{{ roundPermissionText(selectedRound) }}<br><strong>文字輸入：</strong>停止輸入後會自動同步，不需要按儲存。<template v-if="selectedRound.number===1 && selectedRound.courseGuidanceMode"><br><strong>課程指導中：</strong>可選擇「課程中調整」；同一次進入只記一次，不計入正式改變目標次數。</template></div>
+    <div v-if="!isRoundOpen(selectedRound)" class="notice notice-amber"><strong>此 Round 尚未開放，目前僅可查看。</strong></div>
+    <div v-else-if="!canEditSelectedRound" class="notice notice-amber"><strong>此 Round 目前僅可查看。</strong></div>
 
     <section>
       <div class="bingo-summary">
