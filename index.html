@@ -254,6 +254,7 @@
     .progress-bar { height:9px; background:#e2e8f0; border-radius:999px; overflow:hidden; margin-top:8px; }
     .progress-bar > div { height:100%; background:linear-gradient(90deg,#10b981,#34d399); border-radius:999px; }
     .modal-overlay { position:fixed; inset:0; z-index:5000; background:rgba(15,23,42,.64); display:grid; place-items:center; padding:18px; }
+    .student-detail-overlay { z-index:4500; }
     .modal { width:min(620px,100%); max-height:90vh; overflow:auto; background:#fff; border-radius:18px; padding:24px; box-shadow:0 25px 70px rgba(0,0,0,.32); }
     .modal-wide { width:min(1050px,100%); }
     .modal h2,.modal h3 { margin-top:0; color:var(--ink-dark); }
@@ -429,6 +430,20 @@
         <span class="muted small">儲存後會即時同步給所有學員；可同時開放多個 Round。</span>
         <button class="btn btn-primary" @click="saveTeacherSettings">儲存活動設定</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 學員端：從九宮格開啟單格完整操作 -->
+  <div v-if="studentGoalDetail.show && studentGoalDetailGoal" class="modal-overlay student-detail-overlay" @click.self="closeStudentGoalDetail">
+    <div class="modal modal-wide">
+      <div class="section-head">
+        <div>
+          <h2>九宮格第 {{ studentGoalDetailGoal.slotIndex }} 格｜完整操作</h2>
+          <p>月份勾選、完成紀錄、內容調整與歷程都集中在這裡。</p>
+        </div>
+        <button class="btn btn-ghost" @click="closeStudentGoalDetail">關閉</button>
+      </div>
+      <goal-detail :goal="studentGoalDetailGoal"></goal-detail>
     </div>
   </div>
 
@@ -737,13 +752,12 @@
           <div v-for="slot in round1Slots" :key="slot.index" class="grid-cell" :class="{complete:slot.goal && checkedMonthCount(slot.goal)===3,'empty-cell':!slot.goal}">
             <template v-if="slot.goal">
               <div class="grid-cell-number">{{ slot.index }}</div><div class="grid-cell-title">{{ currentVersion(slot.goal)?.action }}</div><div class="grid-cell-progress">{{ checkedMonthCount(slot.goal) }}/3 個月完成｜{{ activeLogArray(slot.goal).length }} 筆紀錄</div>
-              <div class="grid-cell-actions"><button class="btn btn-success btn-small" :disabled="!canAddLogsSelectedRound" @click="openLogModal(selectedRound.id,slot.goal)">＋紀錄</button><button class="btn btn-soft-amber btn-small" :disabled="!canEditGoalsSelectedRound" @click="openChangeGoal(selectedRound.id,slot.goal)">{{ selectedRound.courseGuidanceMode ? '課程中修改' : '改變目標' }}</button><button class="btn btn-ghost btn-small" @click="openHistory(slot.goal)">歷程</button></div>
+              <div class="grid-cell-actions"><button class="btn btn-soft btn-small" @click="openStudentGoalDetail(selectedRound.id,slot.goal)">查看／勾選</button><button class="btn btn-success btn-small" :disabled="!canAddLogsSelectedRound" @click="openLogModal(selectedRound.id,slot.goal)">＋紀錄</button><button class="btn btn-soft-amber btn-small" :disabled="!canEditGoalsSelectedRound" @click="openChangeGoal(selectedRound.id,slot.goal)">{{ selectedRound.courseGuidanceMode ? '課程中修改' : '改變目標' }}</button></div>
             </template>
             <template v-else><div class="grid-cell-number">{{ slot.index }}</div><strong>這一格尚未設定</strong><span class="small muted" style="margin:7px 0 11px;">寫下一件小而可持續的發展做法</span><button class="btn btn-primary btn-small" :disabled="!canEditGoalsSelectedRound" @click="openCreateGoal(selectedRound.id,slot.index)">＋填寫這一格</button></template>
           </div>
         </div>
       </div>
-      <div v-for="slot in round1Slots.filter(x=>x.goal)" :key="'detail_'+slot.index" style="margin-top:14px;"><goal-detail :goal="slot.goal"></goal-detail></div>
     </section>
 
     <!-- Round 2~4 -->
@@ -859,6 +873,7 @@ const app = createApp({
       historyModal:{show:false,versions:[],currentVersionId:''},
       correctionModal:{show:false,participantId:'',roundKey:'',goalId:'',versionId:'',oldText:'',newText:'',reason:''},
       identityModal:{show:false,participantId:'',name:'',employeeNo:'',oldName:'',oldEmployeeNo:'',reason:''},
+      studentGoalDetail:{show:false,roundKey:'round1',goalId:''},
       teacherGoalDetail:{show:false,roundKey:'',goalId:''}
     };
   },
@@ -897,6 +912,7 @@ const app = createApp({
       return Array.from({length:9},(_,i)=>({index:i+1,goal:map[i+1]||null}));
     },
     bingoCompletedCells() { return this.round1Slots.filter(x=>x.goal && this.checkedMonthCount(x.goal)===3).length; },
+    studentGoalDetailGoal() { return this.studentGoalDetail.show ? this.studentGoalArray(this.studentGoalDetail.roundKey).find(g=>g.id===this.studentGoalDetail.goalId) || null : null; },
     teacherGoalDetailGoal() { return this.teacherGoalDetail.show && this.selectedParticipant ? this.participantGoalArray(this.selectedParticipant,this.teacherGoalDetail.roundKey).find(g=>g.id===this.teacherGoalDetail.goalId) || null : null; },
     bingoLines() {
       const complete = new Set(this.round1Slots.filter(x=>x.goal && this.checkedMonthCount(x.goal)===3).map(x=>x.index));
@@ -930,6 +946,8 @@ const app = createApp({
     showToast(msg) { this.toastMsg=msg; clearTimeout(this._toastTimer); this._toastTimer=setTimeout(()=>this.toastMsg='',3400); },
     askConfirm(message,action) { this.confirmBox={show:true,message,action}; },
     runConfirm() { const action=this.confirmBox.action; this.confirmBox={show:false,message:'',action:null}; if(action) action(); },
+    openStudentGoalDetail(roundKey,goal) { if(!goal)return; this.studentGoalDetail={show:true,roundKey,goalId:goal.id}; },
+    closeStudentGoalDetail() { this.studentGoalDetail={show:false,roundKey:'round1',goalId:''}; },
     attach(ref,event,callback) { ref.on(event,callback); this.listeners.push({ref,event,callback}); },
     detachAll() { this.listeners.forEach(({ref,event,callback})=>ref.off(event,callback)); this.listeners=[]; },
     attachPublicActivity() {
