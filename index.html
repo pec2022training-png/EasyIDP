@@ -123,15 +123,18 @@
     .status-open { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; }
     .status-closed { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
     .status-neutral { background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; }
-    .teacher-hero {
-      background:linear-gradient(135deg,#1e293b,#0f172a); color:#fff; border-radius:20px; padding:24px;
-      box-shadow:0 14px 34px rgba(15,23,42,.2); margin-bottom:18px;
+    .teacher-status {
+      display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;
+      background:#fff; border:1px solid var(--line); border-left:6px solid var(--primary); border-radius:15px;
+      padding:14px 16px; box-shadow:0 4px 16px rgba(15,23,42,.055); margin-bottom:18px;
     }
-    .teacher-hero small { color:#bae6fd; font-weight:900; letter-spacing:.06em; }
-    .teacher-hero h2 { margin:7px 0 5px; font-size:clamp(1.55rem,4vw,2.25rem); }
-    .teacher-hero p { margin:0; color:#dbeafe; line-height:1.65; }
-    .hero-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-    .hero-pill { background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:999px; padding:7px 11px; font-weight:800; }
+    .teacher-status-main { min-width:220px; flex:1 1 390px; }
+    .teacher-status-kicker { display:block; margin-bottom:3px; color:var(--primary-dark); font-size:.78rem; font-weight:950; letter-spacing:.05em; }
+    .teacher-status-name { color:var(--ink-dark); font-size:clamp(1.08rem,2.5vw,1.32rem); font-weight:950; line-height:1.35; overflow-wrap:anywhere; }
+    .teacher-status-sub { margin-top:3px; color:var(--muted); font-size:.86rem; line-height:1.5; }
+    .teacher-status-meta { display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap; flex:1 1 360px; }
+    .status-dot { width:8px; height:8px; border-radius:50%; background:currentColor; flex:0 0 auto; }
+    .round-order-inline { display:inline-flex; margin-left:7px; padding:3px 7px; border-radius:999px; background:#f1f5f9; color:#64748b; font-size:.72rem; font-weight:850; vertical-align:middle; }
     .metric-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
     .metric { background:#fff; border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center; }
     .metric strong { display:block; font-size:1.7rem; color:var(--primary-dark); }
@@ -178,7 +181,8 @@
     .student-hero p { margin:4px 0; color:var(--muted); line-height:1.65; }
     .student-userbar { display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; margin-top:15px; padding-top:14px; border-top:1px dashed var(--line); }
     .round-nav { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:16px; }
-    .round-nav-btn { border:1px solid var(--line); background:#fff; border-radius:13px; padding:13px 9px; text-align:center; color:#475569; font-weight:900; }
+    .round-nav-btn { border:1px solid var(--line); background:#fff; border-radius:13px; padding:12px 8px; text-align:center; color:#475569; font-weight:900; min-width:0; }
+    .round-nav-name { display:block; line-height:1.35; overflow-wrap:anywhere; }
     .round-nav-btn.active { background:var(--primary); color:#fff; border-color:var(--primary); box-shadow:0 7px 18px rgba(14,165,233,.22); }
     .round-nav-btn.open-round:not(.active) { border-color:#86efac; background:#f0fdf4; color:#166534; }
     .round-nav-btn.current:not(.active) { box-shadow:inset 0 0 0 2px #7dd3fc; }
@@ -254,6 +258,7 @@
     .progress-bar { height:9px; background:#e2e8f0; border-radius:999px; overflow:hidden; margin-top:8px; }
     .progress-bar > div { height:100%; background:linear-gradient(90deg,#10b981,#34d399); border-radius:999px; }
     .modal-overlay { position:fixed; inset:0; z-index:5000; background:rgba(15,23,42,.64); display:grid; place-items:center; padding:18px; }
+    .confirm-overlay { z-index:9000; }
     .modal { width:min(620px,100%); max-height:90vh; overflow:auto; background:#fff; border-radius:18px; padding:24px; box-shadow:0 25px 70px rgba(0,0,0,.32); }
     .modal-wide { width:min(1050px,100%); }
     .modal h2,.modal h3 { margin-top:0; color:var(--ink-dark); }
@@ -326,6 +331,8 @@
       .toolbar { width:100%; }
       .toolbar .btn { flex:1 1 auto; }
       .student-userbar { align-items:flex-start; }
+      .teacher-status { align-items:flex-start; padding:13px 14px; }
+      .teacher-status-meta { justify-content:flex-start; flex-basis:100%; }
       .full { grid-column:auto; }
     }
     @media (max-width:430px) {
@@ -344,7 +351,7 @@
   <div v-if="toastMsg" class="toast">{{ toastMsg }}</div>
 
   <!-- 共用確認視窗 -->
-  <div v-if="confirmBox.show" class="modal-overlay">
+  <div v-if="confirmBox.show" class="modal-overlay confirm-overlay">
     <div class="modal" style="max-width:460px;">
       <div class="confirm-icon">⚠️</div>
       <h3 style="text-align:center;">確認操作</h3>
@@ -373,7 +380,7 @@
   <div v-if="showTeacherSettings" class="modal-overlay" @click.self="showTeacherSettings=false">
     <div class="modal modal-wide">
       <div class="section-head">
-        <div><h2>⚙️ 活動、期間與學員操作權限</h2><p>每一個 Round 都可獨立開啟或中止。Round 2～4 會自動延續前一輪的發展項目，並為本輪重新建立三個月的完成狀態與紀錄。</p></div>
+        <div><h2>⚙️ 活動、期間與學員操作權限</h2><p>每一個階段都可自訂名稱並獨立開啟或中止。第 2～4 階段會自動延續前一階段的發展項目，並為目前階段重新建立三個月的完成狀態與紀錄。</p></div>
         <button class="btn btn-ghost" @click="showTeacherSettings=false">關閉</button>
       </div>
       <div class="settings-grid">
@@ -382,11 +389,11 @@
           <input type="text" v-model.trim="settingsDraft.title">
         </div>
         <div>
-          <label class="field-label">目前進行 Round（講師主畫面＋學員預設進入）</label>
+          <label class="field-label">目前進行階段（講師主畫面＋學員預設進入）</label>
           <select v-model="settingsDraft.currentRound" @change="onCurrentRoundChanged">
-            <option :value="1">Round 1</option><option :value="2">Round 2</option><option :value="3">Round 3</option><option :value="4">Round 4</option>
+            <option v-for="round in roundDraftArray" :key="round.id" :value="round.number">{{ roundDisplayName(round) }}（第 {{ round.number }} 階段）</option>
           </select>
-          <div class="field-help">切換時會先將該 Round 開啟，並開放三項操作；不會自動關閉其他 Round。</div>
+          <div class="field-help">切換時會先將該階段開啟，並開放三項操作；不會自動關閉其他階段。上方名稱會隨下方輸入內容即時更新。</div>
         </div>
         <div class="full">
           <label class="field-label">學員首頁說明</label>
@@ -407,25 +414,25 @@
           </select>
         </div>
       </div>
-      <div class="notice notice-blue" style="margin-top:16px;margin-bottom:0;"><strong>權限判斷原則</strong><br>Round 的開始／結束日期不會自動開關學員權限。只有下方的「開放本 Round」與講師主動啟用的時間自動化，才會影響學員能否操作。</div>
+      <div class="notice notice-blue" style="margin-top:16px;margin-bottom:0;"><strong>權限判斷原則</strong><br>階段的開始／結束日期不會自動開關學員權限。只有下方的「開放此階段」與講師主動啟用的時間自動化，才會影響學員能否操作。</div>
       <div style="height:1px;background:var(--line);margin:21px 0;"></div>
       <div class="round-setting-list">
         <div v-for="round in roundDraftArray" :key="round.id" class="round-setting-row">
           <div class="round-setting-head">
             <div class="round-number">{{ round.number }}</div>
-            <div><strong>Round {{ round.number }}</strong><div class="muted small">{{ round.number===1 ? '個人發展起步｜每人 1～2 項' : '延續前輪＋本輪可新增 1～3 項' }}</div></div>
+            <div><strong>{{ roundDisplayName(round) }}</strong><span class="round-order-inline">第 {{ round.number }} 階段</span><div class="muted small" style="margin-top:4px;">{{ round.number===1 ? '發展起步｜每人 1～2 項' : '延續前一階段＋目前階段可新增 1～3 項' }}</div></div>
           </div>
           <label class="round-master-toggle" :class="{enabled:roundDraftEffectiveEnabled(round)}">
             <input type="checkbox" v-model="round.isEnabled">
-            <span><strong>開放 Round {{ round.number }} 給學員</strong><br><span class="small">可與其他 Round 同時開啟；取消後學員仍可查看既有資料，但不能新增或修改。</span></span>
+            <span><strong>開放「{{ roundDisplayName(round) }}」給學員</strong><br><span class="small">可與其他階段同時開啟；取消後學員仍可查看既有資料，但不能新增或修改。</span></span>
             <span class="status-pill access-state" :class="roundDraftEffectiveEnabled(round)?'status-open':'status-closed'">{{ roundDraftAccessStatus(round) }}</span>
           </label>
           <div class="round-setting-grid">
-            <div><label class="field-label">本輪名稱</label><input type="text" v-model.trim="round.title"></div>
+            <div><label class="field-label">階段顯示名稱 <span class="required">*</span></label><input type="text" v-model="round.title" maxlength="24" placeholder="例如：第一季、強項發展"><div class="field-help">會同步顯示於講師端、學員端、詳細資料與匯出資料；最多 24 個字，四個名稱不可重複。</div></div>
             <div><label class="field-label">執行開始日期</label><input type="date" v-model="round.startDate"></div>
             <div><label class="field-label">執行結束日期</label><input type="date" v-model="round.endDate"></div>
           </div>
-          <div class="field-help">執行日期只作為三個月份的切分依據，不會自動開啟或關閉本 Round。</div>
+          <div class="field-help">執行日期只作為三個月份的切分依據，不會自動開啟或關閉此階段。</div>
           <div class="round-permission-grid">
             <label class="permission-option"><input type="checkbox" v-model="round.allowGoalEdit"><span><strong>開放設定／修改目標</strong><br><span class="small">可新增目標及調整目前做法</span></span></label>
             <label class="permission-option"><input type="checkbox" v-model="round.allowLogEntry"><span><strong>開放完成紀錄</strong><br><span class="small">可新增或作廢完成紀錄</span></span></label>
@@ -433,7 +440,7 @@
           </div>
           <label v-if="round.number===1" class="permission-option guidance" style="margin-top:9px;"><input type="checkbox" v-model="round.courseGuidanceMode"><span><strong>課程指導中</strong><br><span class="small">學員可選擇「課程中調整」並自動儲存；同一次開啟只記為一次課堂調整，不計入正式改變目標次數。</span></span></label>
           <div class="round-automation">
-            <label class="permission-option" style="background:#fff;"><input type="checkbox" v-model="round.automationEnabled"><span><strong>啟用本 Round 的時間自動化（選填）</strong><br><span class="small">只有勾選後，下方時間才會生效。可用來讓上一輪再維護 7、14 或 30 天後自動中止。</span></span></label>
+            <label class="permission-option" style="background:#fff;"><input type="checkbox" v-model="round.automationEnabled"><span><strong>啟用此階段的時間自動化（選填）</strong><br><span class="small">只有勾選後，下方時間才會生效。可用來讓前一階段再維護 7、14 或 30 天後自動中止。</span></span></label>
             <div v-if="round.automationEnabled" class="automation-grid">
               <div><label class="field-label">自動開啟時間（選填）</label><input type="datetime-local" v-model="round.autoOpenAt"><div class="field-help">未填則沿用上方手動開關。</div></div>
               <div><label class="field-label">自動中止時間（選填）</label><input type="datetime-local" v-model="round.autoCloseAt"><div class="field-help">到達時間後轉為僅可查看；講師仍可關閉自動化後重新開啟。</div></div>
@@ -447,7 +454,7 @@
         </div>
       </div>
       <div class="bottom-save">
-        <span class="muted small">儲存後會即時同步給所有學員；可同時開放多個 Round。</span>
+        <span class="muted small">儲存後會即時同步給所有學員；可同時開放多個階段。</span>
         <button class="btn btn-primary" @click="saveTeacherSettings">儲存活動設定</button>
       </div>
     </div>
@@ -570,7 +577,7 @@
         <div class="toolbar"><button class="btn btn-soft" @click="openIdentityModal(selectedParticipant)">✏️ 修正姓名／員編</button><button class="btn btn-danger" @click="deleteParticipant(selectedParticipant)">🗑️ 刪除學員資料</button><button class="btn btn-ghost" @click="selectedParticipant=null">關閉</button></div>
       </div>
       <div v-for="round in roundArray" :key="round.id" class="detail-round">
-        <h3>Round {{ round.number }}｜{{ round.title }}</h3>
+        <h3>{{ roundDisplayName(round) }}<span class="round-order-inline">第 {{ round.number }} 階段</span></h3>
         <div class="bingo-summary">
           <span class="summary-chip green">追蹤 {{ participantGoalArray(selectedParticipant,round.id).length }} 項</span>
           <span class="summary-chip">三月皆完成 {{ participantGoalArray(selectedParticipant,round.id).filter(g=>checkedMonthCount(g)===3).length }} 項</span>
@@ -587,12 +594,12 @@
               <button class="btn btn-soft btn-small" @click="openTeacherCorrection(selectedParticipant,round.id,goal)">✏️ 講師修正</button>
             </div>
             <div class="progress-bar"><div :style="{width:`${checkedMonthCount(goal)*33.333}%`}"></div></div>
-            <div class="small muted" style="margin-top:6px;">本輪三個月勾選：{{ checkedMonthCount(goal) }}/3</div>
+            <div class="small muted" style="margin-top:6px;">目前階段三個月勾選：{{ checkedMonthCount(goal) }}/3</div>
             <div class="toolbar" style="margin-top:9px;"><button v-for="n in 3" :key="n" class="btn btn-small" :class="goal.monthlyChecks?.['month'+n]?.checked ? 'btn-soft-green' : 'btn-ghost'" @click="teacherToggleMonthCheck(selectedParticipant,round.id,goal,n-1)">{{ goal.monthlyChecks?.['month'+n]?.checked ? `清除第 ${n} 月勾選` : `補登第 ${n} 月勾選` }}</button></div>
             <details style="margin-top:10px;"><summary style="cursor:pointer;font-weight:900;color:#0284c7;">查看版本與完成紀錄</summary><div class="timeline" style="margin-top:10px;"><div v-for="version in versionArray(goal)" :key="version.id" class="version-row" :class="{current:version.id===goal.currentVersionId}"><h4>{{ version.action }}</h4><div class="version-meta">{{ versionTypeText(version.changeType) }}｜{{ formatDateTime(version.createdAt) }}<template v-if="version.reason"><br>{{ version.reason }}</template></div></div></div><div class="log-list" style="margin-top:10px;"><div v-for="log in logArray(goal)" :key="log.id" class="log-row" :class="{voided:log.voided}"><div class="log-head"><div class="log-title">{{ log.action }}</div><div class="log-date">{{ formatDateOnly(log.date) }}</div></div><div class="log-meta"><template v-if="log.quantity || log.unit">數量：{{ log.quantity }} {{ log.unit }}<br></template>{{ log.note || '' }}<template v-if="log.voided"><br>已作廢：{{ log.voidReason || '未填原因' }}</template></div><button v-if="!log.voided" class="btn btn-ghost btn-small" style="margin-top:7px;" @click="openTeacherVoidLog(selectedParticipant.id,round.id,goal.id,log.id)">講師作廢此筆</button></div></div></details>
           </div>
         </div>
-        <div v-else class="no-data">本輪尚未建立或延續發展項目。</div>
+        <div v-else class="no-data">此階段尚未建立或延續發展項目。</div>
       </div>
     </div>
   </div>
@@ -601,7 +608,7 @@
   <div v-if="identityModal.show" class="modal-overlay" @click.self="identityModal.show=false">
     <div class="modal" style="max-width:520px;">
       <h2>✏️ 修正學員基本資料</h2>
-      <div class="notice notice-amber">若員工編號有變更，系統會安全搬移此學員的全部四輪資料，並保留原編號與修正歷程。</div>
+      <div class="notice notice-amber">若員工編號有變更，系統會安全搬移此學員的全部四個階段資料，並保留原編號與修正歷程。</div>
       <div class="form-grid"><div><label class="field-label">姓名 <span class="required">*</span></label><input type="text" v-model.trim="identityModal.name" maxlength="50"></div><div><label class="field-label">員工編號 <span class="required">*</span></label><input type="text" v-model.trim="identityModal.employeeNo" maxlength="50"></div><div><label class="field-label">修正原因 <span class="required">*</span></label><textarea v-model.trim="identityModal.reason" maxlength="300" placeholder="例如：姓名誤植、員工編號輸入錯誤。"></textarea></div></div>
       <div class="modal-actions"><button class="btn btn-ghost" @click="identityModal.show=false">取消</button><button class="btn btn-primary" @click="saveIdentityCorrection">儲存修正</button></div>
     </div>
@@ -659,36 +666,42 @@
   <!-- 講師端 -->
   <main v-else-if="currentView==='teacher'" class="container">
     <div class="topbar">
-      <div class="brand"><div class="brand-icon">🌱</div><div><h1>{{ activitySettings.title || '個人發展活動' }}</h1><p>講師後台｜四輪發展追蹤</p></div></div>
+      <div class="brand"><div class="brand-icon">🌱</div><div><h1>{{ activitySettings.title || '個人發展活動' }}</h1><p>講師後台｜多階段發展追蹤</p></div></div>
       <div class="toolbar"><button class="btn btn-warning" @click="copyCurrentStudentLink">🔗 複製學員連結</button><button class="btn btn-ghost" @click="openTeacherSettings">⚙️ 活動設定</button></div>
     </div>
-    <section class="teacher-hero">
-      <small>講師後台主要顯示</small><h2>Round {{ activitySettings.currentRound || 1 }}｜{{ currentRoundData.title }}</h2>
-      <p>{{ currentRoundData.startDate && currentRoundData.endDate ? `${formatDateOnly(currentRoundData.startDate)} ～ ${formatDateOnly(currentRoundData.endDate)}` : '尚未設定本輪執行期間' }}</p>
-      <div class="hero-pills"><span class="hero-pill">{{ activitySettings.isOpen===false ? '學員端已暫停' : '學員端開放中' }}</span><span class="hero-pill">可操作：{{ openRoundLabels || '尚未開放任何 Round' }}</span><span class="hero-pill">{{ participantArray.length }} 位學員</span><span class="hero-pill">{{ totalGoalCount }} 個各輪追蹤項目</span></div>
+    <section class="teacher-status">
+      <div class="teacher-status-main">
+        <span class="teacher-status-kicker">目前階段</span>
+        <div class="teacher-status-name">{{ roundDisplayName(currentRoundData) }}</div>
+        <div class="teacher-status-sub">第 {{ currentRoundData.number || activitySettings.currentRound || 1 }} 階段｜{{ currentRoundData.startDate && currentRoundData.endDate ? `${formatDateOnly(currentRoundData.startDate)} ～ ${formatDateOnly(currentRoundData.endDate)}` : '尚未設定執行期間' }}</div>
+      </div>
+      <div class="teacher-status-meta">
+        <span class="status-pill" :class="activitySettings.isOpen===false ? 'status-closed' : 'status-open'"><span class="status-dot"></span>{{ activitySettings.isOpen===false ? '學員端已暫停' : '學員端開放中' }}</span>
+        <span class="status-pill status-neutral">可操作：{{ openRoundLabels || '尚未開放任何階段' }}</span>
+      </div>
     </section>
     <section class="metric-grid">
       <div class="metric"><strong>{{ participantArray.length }}</strong><span>學員人數</span></div>
-      <div class="metric"><strong>{{ totalGoalCount }}</strong><span>各輪追蹤項目數</span></div>
+      <div class="metric"><strong>{{ totalGoalCount }}</strong><span>各階段追蹤項目數</span></div>
       <div class="metric"><strong>{{ totalActiveLogCount }}</strong><span>有效完成紀錄</span></div>
       <div class="metric"><strong>{{ totalMonthlyChecks }}</strong><span>月份完成勾選</span></div>
-      <div class="metric"><strong>{{ totalGoalChanges }}</strong><span>正式改變目標次數</span></div><div class="metric"><strong>{{ totalGuidanceEdits }}</strong><span>Round 1 課程中調整</span></div>
+      <div class="metric"><strong>{{ totalGoalChanges }}</strong><span>正式改變目標次數</span></div><div class="metric"><strong>{{ totalGuidanceEdits }}</strong><span>{{ roundDisplayName(rounds.round1) }}<br>課程中調整</span></div>
     </section>
-    <div class="teacher-tabs"><button class="teacher-tab" :class="{active:teacherTab==='participants'}" @click="teacherTab='participants'">學員清單</button><button class="teacher-tab" :class="{active:teacherTab==='rounds'}" @click="teacherTab='rounds'">各輪整體進度</button><button class="teacher-tab" :class="{active:teacherTab==='export'}" @click="teacherTab='export'">資料匯出</button></div>
+    <div class="teacher-tabs"><button class="teacher-tab" :class="{active:teacherTab==='participants'}" @click="teacherTab='participants'">學員清單</button><button class="teacher-tab" :class="{active:teacherTab==='rounds'}" @click="teacherTab='rounds'">各階段整體進度</button><button class="teacher-tab" :class="{active:teacherTab==='export'}" @click="teacherTab='export'">資料匯出</button></div>
 
     <section v-if="teacherTab==='participants'" class="card">
-      <div class="section-head"><div><h2>學員發展資料</h2><p>可依姓名或員工編號搜尋，點選「查看」開啟四輪完整明細。</p></div><input class="search-box" type="text" v-model.trim="participantSearch" placeholder="搜尋姓名或員工編號"></div>
-      <div v-if="filteredParticipants.length" class="table-wrap"><table><thead><tr><th>姓名</th><th>員工編號</th><th>各輪追蹤項目</th><th>有效紀錄</th><th>月份勾選</th><th>正式改變目標</th><th>課程中調整</th><th>Round 1 項目</th><th>最後記錄</th><th>明細</th></tr></thead><tbody><tr v-for="participant in filteredParticipants" :key="participant.id"><td><strong>{{ participant.profile?.name }}</strong></td><td>{{ participant.profile?.employeeNo }}</td><td>{{ participantGoalCount(participant) }}</td><td>{{ participantLogCount(participant) }}</td><td>{{ participantCheckCount(participant) }}</td><td>{{ participantChangeCount(participant) }}</td><td>{{ participantGuidanceCount(participant) }}</td><td>{{ participantGoalArray(participant,'round1').length }}</td><td>{{ formatDateTime(participantLastActivity(participant)) }}</td><td><button class="btn btn-soft btn-small" @click="selectedParticipant=participant">查看</button></td></tr></tbody></table></div>
+      <div class="section-head"><div><h2>學員發展資料</h2><p>可依姓名或員工編號搜尋，點選「查看」開啟四個階段的完整明細。</p></div><input class="search-box" type="text" v-model.trim="participantSearch" placeholder="搜尋姓名或員工編號"></div>
+      <div v-if="filteredParticipants.length" class="table-wrap"><table><thead><tr><th>姓名</th><th>員工編號</th><th>各階段追蹤項目</th><th>有效紀錄</th><th>月份勾選</th><th>正式改變目標</th><th>課程中調整</th><th>{{ roundDisplayName(rounds.round1) }}項目</th><th>最後記錄</th><th>明細</th></tr></thead><tbody><tr v-for="participant in filteredParticipants" :key="participant.id"><td><strong>{{ participant.profile?.name }}</strong></td><td>{{ participant.profile?.employeeNo }}</td><td>{{ participantGoalCount(participant) }}</td><td>{{ participantLogCount(participant) }}</td><td>{{ participantCheckCount(participant) }}</td><td>{{ participantChangeCount(participant) }}</td><td>{{ participantGuidanceCount(participant) }}</td><td>{{ participantGoalArray(participant,'round1').length }}</td><td>{{ formatDateTime(participantLastActivity(participant)) }}</td><td><button class="btn btn-soft btn-small" @click="selectedParticipant=participant">查看</button></td></tr></tbody></table></div>
       <div v-else class="empty">尚無符合條件的學員資料。</div>
     </section>
 
     <section v-else-if="teacherTab==='rounds'" class="card">
-      <div class="section-head"><div><h2>四輪整體進度</h2><p>依每位學員在各輪留下的目標、紀錄與三個月勾選統計。</p></div></div>
+      <div class="section-head"><div><h2>各階段整體進度</h2><p>依每位學員在各階段留下的目標、紀錄與三個月勾選統計。</p></div></div>
       <div class="goal-grid">
         <article v-for="round in roundArray" :key="round.id" class="card" style="box-shadow:none;border-top:5px solid var(--primary);">
-          <h3 style="margin-top:0;">Round {{ round.number }}｜{{ round.title }}</h3>
+          <h3 style="margin-top:0;">{{ roundDisplayName(round) }}<span class="round-order-inline">第 {{ round.number }} 階段</span></h3>
           <div class="muted small">{{ round.startDate && round.endDate ? `${formatDateOnly(round.startDate)} ～ ${formatDateOnly(round.endDate)}` : '期間尚未設定' }}</div>
-          <div class="small" style="margin-top:9px;line-height:1.7;"><strong>Round 狀態：</strong>{{ isRoundOpen(round) ? '目前開放' : '目前中止' }}<br><strong>學員權限：</strong>{{ roundPermissionText(round) }}<template v-if="round.automationEnabled"><br><strong>時間自動化：</strong>{{ roundAutomationSummary(round) }}</template><template v-if="round.number===1"><br><strong>課程指導模式：</strong>{{ round.courseGuidanceMode ? '開啟' : '關閉' }}</template></div>
+          <div class="small" style="margin-top:9px;line-height:1.7;"><strong>階段狀態：</strong>{{ isRoundOpen(round) ? '目前開放' : '目前中止' }}<br><strong>學員權限：</strong>{{ roundPermissionText(round) }}<template v-if="round.automationEnabled"><br><strong>時間自動化：</strong>{{ roundAutomationSummary(round) }}</template><template v-if="round.number===1"><br><strong>課程指導模式：</strong>{{ round.courseGuidanceMode ? '開啟' : '關閉' }}</template></div>
           <div style="height:1px;background:var(--line);margin:14px 0;"></div>
           <p><strong>有建立目標：</strong>{{ roundParticipantCount(round.id) }} 人</p>
           <p><strong>發展目標：</strong>{{ roundGoalCount(round.id) }} 項</p>
@@ -702,7 +715,7 @@
     <section v-else class="card">
       <div class="section-head"><div><h2>資料匯出與備份</h2><p>Excel 適合分析與留存；JSON 保留完整原始結構，可作為系統備份。</p></div></div>
       <div class="goal-grid">
-        <div class="notice notice-green"><strong>📊 匯出 Excel</strong><br>包含各輪開放權限、學員總覽、跨輪延續來源、各輪進度、全部目標版本、文字修正、課程中調整、完成紀錄、月份勾選及所有修正歷程。<div style="margin-top:12px;"><button class="btn btn-success" @click="exportExcel">匯出完整 Excel</button></div></div>
+        <div class="notice notice-green"><strong>📊 匯出 Excel</strong><br>包含各階段開放權限、自訂名稱、學員總覽、跨階段延續來源、各階段進度、全部目標版本、文字修正、課程中調整、完成紀錄、月份勾選及所有修正歷程。<div style="margin-top:12px;"><button class="btn btn-success" @click="exportExcel">匯出完整 Excel</button></div></div>
         <div class="notice notice-blue"><strong>💾 匯出 JSON 完整備份</strong><br>保存 Firebase 中本活動的完整原始資料。<div style="margin-top:12px;"><button class="btn btn-primary" @click="exportJson">匯出 JSON 備份</button></div></div>
       </div>
       <div class="danger-zone" style="margin-top:18px;"><strong>資料安全提醒</strong><div class="small muted" style="margin-top:6px;line-height:1.6;">目前 Firebase Rules 為公開讀寫模式，適合測試與內部低敏感資料。若日後要提高保護，建議再搭配 Firebase Authentication 與限制式 Rules。</div></div>
@@ -735,35 +748,35 @@
       <div class="student-userbar"><div><strong>{{ studentParticipant.profile?.name }}</strong><span class="muted">｜員工編號 {{ studentParticipant.profile?.employeeNo }}</span></div><button class="btn btn-ghost btn-small" @click="switchStudent">切換學員</button></div>
     </section>
     <div v-if="activitySettings.isOpen===false" class="notice notice-red"><strong>活動目前暫停使用</strong><br>您仍可查看既有資料，但暫時無法新增或變更內容。</div>
-    <nav class="round-nav"><button v-for="round in roundArray" :key="round.id" class="round-nav-btn" :class="{active:selectedRoundKey===round.id,'open-round':isRoundOpen(round),current:Number(activitySettings.currentRound)===Number(round.number)}" @click="selectStudentRound(round.id)"><span>Round {{ round.number }}</span><small>{{ isRoundOpen(round) ? roundAccessShortText(round) : roundStatusText(round) }}</small></button></nav>
-    <div v-if="!isRoundOpen(selectedRound)" class="notice notice-amber"><strong>此 Round 尚未開放，目前僅可查看。</strong></div>
-    <div v-else-if="!canEditSelectedRound" class="notice notice-amber"><strong>此 Round 目前僅可查看。</strong></div>
+    <nav class="round-nav"><button v-for="round in roundArray" :key="round.id" class="round-nav-btn" :class="{active:selectedRoundKey===round.id,'open-round':isRoundOpen(round),current:Number(activitySettings.currentRound)===Number(round.number)}" :title="`第 ${round.number} 階段｜${roundDisplayName(round)}`" @click="selectStudentRound(round.id)"><span class="round-nav-name">{{ roundDisplayName(round) }}</span><small>第 {{ round.number }} 階段｜{{ isRoundOpen(round) ? roundAccessShortText(round) : roundStatusText(round) }}</small></button></nav>
+    <div v-if="!isRoundOpen(selectedRound)" class="notice notice-amber"><strong>「{{ roundDisplayName(selectedRound) }}」尚未開放，目前僅可查看。</strong></div>
+    <div v-else-if="!canEditSelectedRound" class="notice notice-amber"><strong>「{{ roundDisplayName(selectedRound) }}」目前僅可查看。</strong></div>
 
     <section>
       <div class="bingo-summary">
-        <span class="summary-chip green">本輪追蹤 {{ selectedRoundGoals.length }} 項</span>
+        <span class="summary-chip green">目前階段追蹤 {{ selectedRoundGoals.length }} 項</span>
         <span class="summary-chip">三月皆完成 {{ selectedRoundFullyCompleted }}/{{ selectedRoundGoals.length || 0 }} 項</span>
         <span class="summary-chip amber">正式改變 {{ selectedRoundChangeCount }} 次</span>
         <span v-if="selectedRound.number===1" class="summary-chip">課程中調整 {{ selectedRoundGuidanceCount }} 次</span>
       </div>
 
-      <p v-if="selectedRound.number>1" class="carry-note"><strong>延續方式：</strong>下方「延續中的發展項目」來自前一輪，但本輪的完成紀錄與三個月份勾選都是新的，不會覆蓋前一輪資料。</p>
+      <p v-if="selectedRound.number>1" class="carry-note"><strong>延續方式：</strong>下方「延續中的發展項目」來自前一階段，但目前階段的完成紀錄與三個月份勾選都是新的，不會覆蓋前一階段資料。</p>
 
       <div v-if="selectedRoundCarriedGoals.length" class="goal-section">
-        <div class="goal-section-title"><div><h3>延續中的發展項目</h3><p>沿用前幾輪建立的項目，繼續維護本輪三個月的完成狀態與紀錄。</p></div><span class="summary-chip">{{ selectedRoundCarriedGoals.length }} 項</span></div>
+        <div class="goal-section-title"><div><h3>延續中的發展項目</h3><p>沿用前面階段建立的項目，繼續維護目前階段三個月的完成狀態與紀錄。</p></div><span class="summary-chip">{{ selectedRoundCarriedGoals.length }} 項</span></div>
         <div class="goal-grid"><goal-detail v-for="goal in selectedRoundCarriedGoals" :key="goal.id" :goal="goal"></goal-detail></div>
       </div>
 
       <div class="goal-section">
         <div class="goal-section-title">
-          <div><h3>{{ selectedRound.number===1 ? '我的發展項目' : '本輪新增項目' }}</h3><p>{{ selectedRound.number===1 ? '每人設定 1～2 項；內容輸入後即自動儲存。' : '除延續項目外，本輪還可新增 1～3 項。' }}</p></div>
+          <div><h3>{{ selectedRound.number===1 ? '我的發展項目' : '目前階段新增項目' }}</h3><p>{{ selectedRound.number===1 ? '每人設定 1～2 項；內容輸入後即自動儲存。' : '除延續項目外，目前階段還可新增 1～3 項。' }}</p></div>
           <span class="summary-chip">{{ selectedRoundNewGoalCount }}/{{ selectedRoundNewGoalLimit }} 項</span>
         </div>
         <div class="goal-grid">
           <goal-detail v-for="goal in selectedRoundNewGoals" :key="goal.id" :goal="goal"></goal-detail>
-          <button v-if="canAddNewGoalSelectedRound" class="card add-goal-card" :disabled="!canEditGoalsSelectedRound" @click="openCreateGoal(selectedRound.id,null)"><div><strong>＋新增發展項目</strong><span>{{ selectedRound.number===1 ? '本輪最多 2 項' : '本輪最多新增 3 項' }}</span></div></button>
+          <button v-if="canAddNewGoalSelectedRound" class="card add-goal-card" :disabled="!canEditGoalsSelectedRound" @click="openCreateGoal(selectedRound.id,null)"><div><strong>＋新增發展項目</strong><span>{{ selectedRound.number===1 ? '此階段最多 2 項' : '此階段最多新增 3 項' }}</span></div></button>
         </div>
-        <div v-if="!selectedRoundNewGoals.length && !canEditGoalsSelectedRound" class="no-data">目前尚未建立本輪的新發展項目。</div>
+        <div v-if="!selectedRoundNewGoals.length && !canEditGoalsSelectedRound" class="no-data">目前尚未建立此階段的新發展項目。</div>
       </div>
     </section>
     <div class="copyright-footer">統一集團 企訓學院 製作 ® Made by Clyde</div>
@@ -819,10 +832,7 @@ const normalizeRounds = (value,currentRound=1) => {
     const base=defaults[key];
     const number=Number(raw.number)||base.number;
     const merged={...base,...raw,id:key,number};
-    if(key==='round1'&&raw.title==='九宮格習慣養成')merged.title='第一輪發展起步';
-    if(key==='round2'&&raw.title==='第二輪發展行動')merged.title='第二輪持續發展';
-    if(key==='round3'&&raw.title==='第三輪發展行動')merged.title='第三輪持續發展';
-    if(key==='round4'&&raw.title==='第四輪發展行動')merged.title='第四輪持續發展';
+    merged.title=typeof raw.title==='string'&&raw.title.trim()?raw.title.trim():base.title;
     merged.mode='list';
     merged.maxNewGoals=number===1?2:3;
     merged.maxGoals=merged.maxNewGoals;
@@ -892,7 +902,7 @@ const app = createApp({
     roundArray() { return ROUND_KEYS.map(key=>this.rounds[key]).filter(Boolean).sort((a,b)=>a.number-b.number); },
     roundDraftArray() { return ROUND_KEYS.map(key=>this.roundDrafts[key]).filter(Boolean).sort((a,b)=>a.number-b.number); },
     currentRoundData() { return this.rounds[`round${Number(this.activitySettings.currentRound)||1}`] || this.rounds.round1; },
-    openRoundLabels() { return this.roundArray.filter(r=>this.isRoundOpen(r)).map(r=>`R${r.number}`).join('、'); },
+    openRoundLabels() { return this.roundArray.filter(r=>this.isRoundOpen(r)).map(r=>this.roundDisplayName(r)).join('、'); },
     participantArray() { return Object.keys(this.participants||{}).map(id=>({id,...this.participants[id]})).sort((a,b)=>String(a.profile?.name||'').localeCompare(String(b.profile?.name||''),'zh-Hant')); },
     filteredParticipants() {
       const q = this.participantSearch.trim().toLowerCase();
@@ -1016,9 +1026,13 @@ const app = createApp({
     copyCurrentStudentLink(){this.copyText(this.getActivityLink(this.activityId,'student'));},
     openRename(activity){this.renameBox={show:true,id:activity.id,name:activity.name};},
     async confirmRename(){const name=this.renameBox.name.trim();if(!name)return this.showToast('活動名稱不能空白');const id=this.renameBox.id;await db.ref().update({[`developmentActivitiesList/${id}/name`]:name,[`developmentActivities/${id}/settings/title`]:name});this.renameBox.show=false;this.showToast('✅ 已重新命名');},
-    duplicateActivity(activity){this.askConfirm(`確定複製「${activity.name}」嗎？會複製活動與四輪期間設定，但不會複製任何學員資料。`,async()=>{const snap=await db.ref(`developmentActivities/${activity.id}`).once('value');const source=snap.val()||{};const sourceSettings=normalizeSettings(source.settings||{});const id=db.ref('developmentActivitiesList').push().key;const name=`${activity.name}（複製）`;const now=Date.now();await db.ref().update({[`developmentActivitiesList/${id}`]:{name,createdAt:now,archived:false},[`developmentActivities/${id}/settings`]:{...sourceSettings,title:name,createdAt:now},[`developmentActivities/${id}/rounds`]:normalizeRounds(source.rounds||{},sourceSettings.currentRound)});this.showToast('✅ 活動已複製');});},
+    duplicateActivity(activity){this.askConfirm(`確定複製「${activity.name}」嗎？會複製活動與四個階段的期間及自訂名稱，但不會複製任何學員資料。`,async()=>{const snap=await db.ref(`developmentActivities/${activity.id}`).once('value');const source=snap.val()||{};const sourceSettings=normalizeSettings(source.settings||{});const id=db.ref('developmentActivitiesList').push().key;const name=`${activity.name}（複製）`;const now=Date.now();await db.ref().update({[`developmentActivitiesList/${id}`]:{name,createdAt:now,archived:false},[`developmentActivities/${id}/settings`]:{...sourceSettings,title:name,createdAt:now},[`developmentActivities/${id}/rounds`]:normalizeRounds(source.rounds||{},sourceSettings.currentRound)});this.showToast('✅ 活動已複製');});},
     toggleArchive(activity){const archived=!activity.archived;db.ref(`developmentActivitiesList/${activity.id}/archived`).set(archived).then(()=>this.showToast(archived?'📦 活動已封存':'✅ 已解除封存'));},
     deleteActivity(activity){this.askConfirm(`確定刪除「${activity.name}」？所有學員、目標、完成紀錄與歷程都會一併刪除，且無法復原。`,async()=>{await db.ref().update({[`developmentActivitiesList/${activity.id}`]:null,[`developmentActivities/${activity.id}`]:null});this.showToast('🗑️ 活動已刪除');});},
+    roundDisplayName(round){const title=String(round?.title||'').trim();const number=Number(round?.number)||1;return title||`第 ${number} 階段`;},
+    roundSequenceLabel(round){return `第 ${Number(round?.number)||1} 階段`;},
+    roundNameByNumber(number){const n=Number(number)||1;return this.roundDisplayName(this.rounds[`round${n}`]||{number:n});},
+    roundNameByKey(roundKey){const n=Number(String(roundKey||'').replace('round',''))||1;return this.roundDisplayName(this.rounds[roundKey]||{number:n});},
     openTeacherSettings(){this.settingsDraft=clone(this.activitySettings);this.roundDrafts=normalizeRounds(clone(this.rounds),this.settingsDraft.currentRound);this.roundDraftArray.forEach(r=>{r.isEnabled=!!r.isEnabled;r.automationEnabled=!!r.automationEnabled;ROUND_PERMISSION_KEYS.forEach(field=>{r[field]=!!r[field];});if(r.number===1)r.courseGuidanceMode=!!r.courseGuidanceMode;});this.showTeacherSettings=true;},
     onCurrentRoundChanged(){
       const key=`round${Number(this.settingsDraft.currentRound)||1}`;const round=this.roundDrafts[key];if(!round)return;
@@ -1027,10 +1041,17 @@ const app = createApp({
     },
     async saveTeacherSettings(){
       const title=(this.settingsDraft.title||'').trim(); if(!title)return this.showToast('活動名稱不能空白');
+      const usedRoundNames=new Map();
       for(const round of this.roundDraftArray){
-        if(round.startDate&&round.endDate&&round.startDate>round.endDate)return this.showToast(`Round ${round.number} 的結束日期不能早於開始日期`);
+        const roundTitle=String(round.title||'').trim();
+        if(!roundTitle)return this.showToast(`第 ${round.number} 階段的顯示名稱不能空白`);
+        if(roundTitle.length>24)return this.showToast(`「${roundTitle}」超過 24 個字，請縮短階段名稱`);
+        const normalizedTitle=roundTitle.toLocaleLowerCase('zh-TW');
+        if(usedRoundNames.has(normalizedTitle))return this.showToast(`階段名稱「${roundTitle}」重複，請設定不同名稱`);
+        usedRoundNames.set(normalizedTitle,round.number);round.title=roundTitle;
+        if(round.startDate&&round.endDate&&round.startDate>round.endDate)return this.showToast(`「${roundTitle}」的結束日期不能早於開始日期`);
         const openAt=this.dateTimeValue(round.autoOpenAt);const closeAt=this.dateTimeValue(round.autoCloseAt);
-        if(round.automationEnabled&&openAt&&closeAt&&openAt>=closeAt)return this.showToast(`Round ${round.number} 的自動中止時間必須晚於自動開啟時間`);
+        if(round.automationEnabled&&openAt&&closeAt&&openAt>=closeAt)return this.showToast(`「${roundTitle}」的自動中止時間必須晚於自動開啟時間`);
       }
       const cleanSettings=normalizeSettings({...this.settingsDraft,title}); const cleanRounds=normalizeRounds(this.roundDrafts,cleanSettings.currentRound);ROUND_KEYS.forEach(k=>{cleanRounds[k].isEnabled=!!cleanRounds[k].isEnabled;cleanRounds[k].automationEnabled=!!cleanRounds[k].automationEnabled;ROUND_PERMISSION_KEYS.forEach(field=>{cleanRounds[k][field]=!!cleanRounds[k][field];});if(k==='round1')cleanRounds[k].courseGuidanceMode=!!cleanRounds[k].courseGuidanceMode;});
       try{await db.ref().update({[`developmentActivities/${this.activityId}/settings`]:cleanSettings,[`developmentActivities/${this.activityId}/rounds`]:cleanRounds,[`developmentActivitiesList/${this.activityId}/name`]:title});this.showTeacherSettings=false;this.showToast('✅ 活動設定已儲存，學員權限已同步');}catch(err){this.showToast('❌ 儲存失敗：'+err.message);}
@@ -1106,7 +1127,7 @@ const app = createApp({
     normalizedGoalText(value){return String(value||'').trim().replace(/\s+/g,' ').toLowerCase();},
     goalLineageId(goal,roundKey){return goal?.lineageId||`${roundKey}:${goal?.id||''}`;},
     isGoalCarriedToRound(goal,roundKey){const roundNumber=Number(this.rounds[roundKey]?.number)||Number(String(roundKey).replace('round',''))||1;if(roundNumber===1)return false;if(goal?.isCarriedForward===true)return true;const createdIn=Number(goal?.createdInRound);return createdIn>0&&createdIn<roundNumber;},
-    goalOriginText(goal,roundKey){const roundNumber=Number(this.rounds[roundKey]?.number)||1;if(!this.isGoalCarriedToRound(goal,roundKey))return `本輪新增`;const createdIn=Number(goal?.createdInRound)||Math.max(1,roundNumber-1);return `由 Round ${createdIn} 延續`;},
+    goalOriginText(goal,roundKey){const roundNumber=Number(this.rounds[roundKey]?.number)||1;if(!this.isGoalCarriedToRound(goal,roundKey))return `此階段新增`;const createdIn=Number(goal?.createdInRound)||Math.max(1,roundNumber-1);return `由「${this.roundNameByNumber(createdIn)}」延續`;},
     async ensureRoundCarryForward(roundKey){
       const roundNumber=Number(this.rounds[roundKey]?.number)||Number(String(roundKey||'').replace('round',''))||1;
       if(!this.participantId||roundNumber<=1)return;
@@ -1151,7 +1172,7 @@ const app = createApp({
             createdAt:now,
             updatedAt:now,
             currentVersionId:versionId,
-            versions:{[versionId]:{action:previousCurrent.action||'',frequency:previousCurrent.frequency||'',changeType:'carry_forward',reason:`由 Round ${roundNumber-1} 延續到本輪`,sourceVersionId:previousGoal.currentVersionId||previousCurrent.id||'',createdAt:now,createdBy:'system'}},
+            versions:{[versionId]:{action:previousCurrent.action||'',frequency:previousCurrent.frequency||'',changeType:'carry_forward',reason:`由「${this.roundNameByKey(previousKey)}」延續至「${this.roundNameByKey(roundKey)}」`,sourceVersionId:previousGoal.currentVersionId||previousCurrent.id||'',createdAt:now,createdBy:'system'}},
             logs:{},
             monthlyChecks:{}
           };
@@ -1177,7 +1198,7 @@ const app = createApp({
       if(this.activitySettings.isOpen===false||!this.roundPermission(round,'allowGoalEdit'))return;
       const limit=round?.number===1?2:3;
       const newCount=this.studentGoalArray(roundKey).filter(g=>!this.isGoalCarriedToRound(g,roundKey)).length;
-      if(newCount>=limit)return this.showToast(round?.number===1?'Round 1 每人最多建立 2 項':'每一輪最多新增 3 項');
+      if(newCount>=limit)return this.showToast(round?.number===1?`「${this.roundDisplayName(round)}」每人最多建立 2 項`:'每個階段最多新增 3 項');
       const base=`developmentActivities/${this.activityId}/participants/${this.participantId}/roundData/${roundKey}/goals`;
       const goalId=db.ref(base).push().key;
       this.goalModal={show:true,mode:'create',roundKey,goalId,action:'',frequency:'',reason:'',editIntent:'correction',originalAction:'',originalFrequency:'',originalVersionId:'',sessionVersionId:'',sessionAuditId:'',sessionLocked:false,createdAt:Date.now(),lastSavedSignature:''};
@@ -1312,8 +1333,8 @@ const app = createApp({
       if(!m.date||!action)return false;
       if(m.date>nowDateInput()){this.logSaveState='error';this.logSaveMessage='完成日期不能晚於今天';return false;}
       const round=this.rounds[m.roundKey];
-      if(round?.startDate&&m.date<round.startDate){this.logSaveState='error';this.logSaveMessage='完成日期早於本 Round 的開始日期';return false;}
-      if(round?.endDate&&m.date>round.endDate){this.logSaveState='error';this.logSaveMessage='完成日期晚於本 Round 的結束日期';return false;}
+      if(round?.startDate&&m.date<round.startDate){this.logSaveState='error';this.logSaveMessage=`完成日期早於「${this.roundDisplayName(round)}」的開始日期`;return false;}
+      if(round?.endDate&&m.date>round.endDate){this.logSaveState='error';this.logSaveMessage=`完成日期晚於「${this.roundDisplayName(round)}」的結束日期`;return false;}
       const signature=JSON.stringify([m.date,action,m.quantity||'',m.unit||'',m.note||'']);
       if(signature===m.lastSavedSignature){this.logSaveState='saved';this.logSaveMessage='已自動儲存';return true;}
       this.logSaveState='saving';this.logSaveMessage='正在自動儲存…';
@@ -1387,7 +1408,7 @@ const app = createApp({
       const updates={};if(newId===oldId){updates[oldPath]=data;}else{updates[oldPath]=null;updates[`developmentActivities/${this.activityId}/participants/${newId}`]=data;updates[`developmentActivities/${this.activityId}/participantAliases/${oldId}`]={newParticipantId:newId,createdAt:now};}
       try{await db.ref().update(updates);this.selectedParticipant={id:newId,...data};this.identityModal.show=false;this.showToast('✅ 姓名與員工編號已修正，完整資料與歷程均已保留');}catch(err){this.showToast('❌ 修正失敗：'+err.message);}
     },
-    deleteParticipant(participant){this.askConfirm(`確定刪除「${participant.profile?.name||'此學員'}」的所有四輪資料？此動作無法復原。`,async()=>{await db.ref(`developmentActivities/${this.activityId}/participants/${participant.id}`).remove();this.selectedParticipant=null;this.showToast('🗑️ 學員資料已刪除');});},
+    deleteParticipant(participant){this.askConfirm(`確定刪除「${participant.profile?.name||'此學員'}」的所有階段資料？此動作無法復原。`,async()=>{await db.ref(`developmentActivities/${this.activityId}/participants/${participant.id}`).remove();this.selectedParticipant=null;this.showToast('🗑️ 學員資料已刪除');});},
     async teacherToggleMonthCheck(participant,roundKey,goal,monthIndex){
       const key=`month${monthIndex+1}`;const current=!!goal.monthlyChecks?.[key]?.checked;const now=Date.now();const base=`developmentActivities/${this.activityId}/participants/${participant.id}`;const auditId=db.ref(base).push().key;const period=this.splitRoundPeriods(this.rounds[roundKey])[monthIndex];
       const updates={};updates[`${base}/roundData/${roundKey}/goals/${goal.id}/monthlyChecks/${key}`]=current?null:{checked:true,checkedAt:now,period,checkedBy:'teacher'};updates[`${base}/audit/${auditId}`]={type:'teacherMonthCheck',roundKey,goalId:goal.id,month:monthIndex+1,action:current?'clear':'set',createdAt:now};
@@ -1406,57 +1427,68 @@ const app = createApp({
       if(typeof XLSX==='undefined')return this.showToast('❌ Excel 元件尚未載入');
       const instructionRows=[
         ['個人發展行動追蹤系統－匯出資料說明'],
-        ['Round 1 每人建立 1～2 項；Round 2～4 自動延續前一輪項目，並可各新增 1～3 項。每一輪的完成紀錄與三個月勾選均獨立保存。'],
+        ['第 1 階段每人建立 1～2 項；第 2～4 階段自動延續前一階段項目，並可各新增 1～3 項。每個階段的完成紀錄與三個月份勾選均獨立保存。'],
+        ['四個階段的顯示名稱可由講師自訂；匯出資料同時保留「階段順序」與「階段名稱」，便於辨識及分析。'],
         ['文字輸入採自動儲存。同一次開啟編輯畫面時，連續輸入只更新同一筆；「修正文字」保留稽核紀錄但不計入正式改變次數。'],
         ['「正式改變目標」只計算調整做法與更換方向；課程中調整另行統計。'],
         ['作廢完成紀錄仍保留於「完成紀錄」工作表，但不計入有效紀錄數。'],
         ['匯出時間',this.formatDateTime(Date.now())]
       ];
-      const settingsRows=[['類別','欄位','內容'],['活動','活動名稱',this.activitySettings.title],['活動','學員說明',this.activitySettings.introText],['活動','講師後台主要顯示 Round',this.activitySettings.currentRound],['活動','活動開放',this.activitySettings.isOpen===false?'否':'是'],['活動','勾選前需有紀錄',this.activitySettings.requireLogBeforeCheck===false?'否':'是']];
+      const currentRound=this.currentRoundData;
+      const settingsRows=[
+        ['類別','欄位','內容'],
+        ['活動','活動名稱',this.activitySettings.title],
+        ['活動','學員說明',this.activitySettings.introText],
+        ['活動','講師後台目前階段順序',this.activitySettings.currentRound],
+        ['活動','講師後台目前階段名稱',this.roundDisplayName(currentRound)],
+        ['活動','活動開放',this.activitySettings.isOpen===false?'否':'是'],
+        ['活動','勾選前需有紀錄',this.activitySettings.requireLogBeforeCheck===false?'否':'是']
+      ];
       this.roundArray.forEach(r=>{
-        const periods=this.splitRoundPeriods(r);
+        const periods=this.splitRoundPeriods(r);const category=`第 ${r.number} 階段｜${this.roundDisplayName(r)}`;
         settingsRows.push(
-          [`Round ${r.number}`,'名稱',r.title],
-          [`Round ${r.number}`,'本輪新增上限',r.number===1?'2 項':'3 項'],
-          [`Round ${r.number}`,'延續規則',r.number===1?'不適用':'自動延續前一輪全部項目'],
-          [`Round ${r.number}`,'執行期間',`${r.startDate||''}～${r.endDate||''}`],
-          [`Round ${r.number}`,'目前有效開放',this.isRoundOpen(r)?'是':'否'],
-          [`Round ${r.number}`,'手動開放設定',r.isEnabled?'是':'否'],
-          [`Round ${r.number}`,'開放設定／修改目標',this.roundPermission(r,'allowGoalEdit')?'是':'否'],
-          [`Round ${r.number}`,'開放完成紀錄',this.roundPermission(r,'allowLogEntry')?'是':'否'],
-          [`Round ${r.number}`,'開放月份勾選',this.roundPermission(r,'allowMonthCheck')?'是':'否'],
-          [`Round ${r.number}`,'時間自動化',r.automationEnabled?'是':'否'],
-          [`Round ${r.number}`,'自動開啟時間',r.autoOpenAt||''],
-          [`Round ${r.number}`,'自動中止時間',r.autoCloseAt||''],
-          [`Round ${r.number}`,'課程指導中',r.number===1?(r.courseGuidanceMode?'是':'否'):'不適用'],
-          [`Round ${r.number}`,'第1月',periods[0].start?`${periods[0].start}～${periods[0].end}`:''],
-          [`Round ${r.number}`,'第2月',periods[1].start?`${periods[1].start}～${periods[1].end}`:''],
-          [`Round ${r.number}`,'第3月',periods[2].start?`${periods[2].start}～${periods[2].end}`:'']
+          [category,'階段順序',r.number],
+          [category,'階段名稱',this.roundDisplayName(r)],
+          [category,'目前階段新增上限',r.number===1?'2 項':'3 項'],
+          [category,'延續規則',r.number===1?'不適用':'自動延續前一階段全部項目'],
+          [category,'執行期間',`${r.startDate||''}～${r.endDate||''}`],
+          [category,'目前有效開放',this.isRoundOpen(r)?'是':'否'],
+          [category,'手動開放設定',r.isEnabled?'是':'否'],
+          [category,'開放設定／修改目標',this.roundPermission(r,'allowGoalEdit')?'是':'否'],
+          [category,'開放完成紀錄',this.roundPermission(r,'allowLogEntry')?'是':'否'],
+          [category,'開放月份勾選',this.roundPermission(r,'allowMonthCheck')?'是':'否'],
+          [category,'時間自動化',r.automationEnabled?'是':'否'],
+          [category,'自動開啟時間',r.autoOpenAt||''],
+          [category,'自動中止時間',r.autoCloseAt||''],
+          [category,'課程指導中',r.number===1?(r.courseGuidanceMode?'是':'否'):'不適用'],
+          [category,'第1月',periods[0].start?`${periods[0].start}～${periods[0].end}`:''],
+          [category,'第2月',periods[1].start?`${periods[1].start}～${periods[1].end}`:''],
+          [category,'第3月',periods[2].start?`${periods[2].start}～${periods[2].end}`:'']
         );
       });
       const participantRows=[],roundProgressRows=[],goalRows=[],versionRows=[],logRows=[],checkRows=[],auditRows=[];
       this.participantArray.forEach(p=>{
         const voidedLogs=ROUND_KEYS.reduce((s,k)=>s+this.participantGoalArray(p,k).reduce((x,g)=>x+this.logArray(g).filter(l=>l.voided).length,0),0);
-        const overview={'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','建立時間':this.formatDateTime(p.profile?.createdAt),'最後登入':this.formatDateTime(p.profile?.lastLoginAt),'最後活動':this.formatDateTime(this.participantLastActivity(p)),'各輪追蹤項目總數':this.participantGoalCount(p),'有效完成紀錄':this.participantLogCount(p),'作廢紀錄':voidedLogs,'月份勾選':this.participantCheckCount(p),'正式改變目標':this.participantChangeCount(p),'課程中調整':this.participantGuidanceCount(p)};
+        const overview={'姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','建立時間':this.formatDateTime(p.profile?.createdAt),'最後登入':this.formatDateTime(p.profile?.lastLoginAt),'最後活動':this.formatDateTime(this.participantLastActivity(p)),'各階段追蹤項目總數':this.participantGoalCount(p),'有效完成紀錄':this.participantLogCount(p),'作廢紀錄':voidedLogs,'月份勾選':this.participantCheckCount(p),'正式改變目標':this.participantChangeCount(p),'課程中調整':this.participantGuidanceCount(p)};
         ROUND_KEYS.forEach(k=>{
-          const no=k.replace('round','');
+          const round=this.rounds[k];const no=round.number;const name=this.roundDisplayName(round);const prefix=`第${no}階段「${name}」`;
           const goals=this.participantGoalArray(p,k);
-          overview[`R${no}追蹤項目`]=goals.length;
-          overview[`R${no}延續項目`]=goals.filter(g=>this.isGoalCarriedToRound(g,k)).length;
-          overview[`R${no}本輪新增`]=goals.filter(g=>!this.isGoalCarriedToRound(g,k)).length;
-          overview[`R${no}有效紀錄`]=goals.reduce((s,g)=>s+this.activeLogArray(g).length,0);
-          overview[`R${no}月份勾選`]=goals.reduce((s,g)=>s+this.checkedMonthCount(g),0);
+          overview[`${prefix}追蹤項目`]=goals.length;
+          overview[`${prefix}延續項目`]=goals.filter(g=>this.isGoalCarriedToRound(g,k)).length;
+          overview[`${prefix}目前階段新增`]=goals.filter(g=>!this.isGoalCarriedToRound(g,k)).length;
+          overview[`${prefix}有效紀錄`]=goals.reduce((s,g)=>s+this.activeLogArray(g).length,0);
+          overview[`${prefix}月份勾選`]=goals.reduce((s,g)=>s+this.checkedMonthCount(g),0);
         });
         participantRows.push(overview);
         ROUND_KEYS.forEach(roundKey=>{
-          const round=this.rounds[roundKey];
+          const round=this.rounds[roundKey];const roundName=this.roundDisplayName(round);
           const goals=this.participantGoalArray(p,roundKey);
           roundProgressRows.push({
-            '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'Round名稱':round.title,
+            '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','階段順序':round.number,'階段名稱':roundName,
             '執行期間':round.startDate&&round.endDate?`${round.startDate}～${round.endDate}`:'',
-            'Round開放狀態':this.isRoundOpen(round)?'開放':'中止','本輪開放權限':this.roundPermissionText(round),
+            '階段開放狀態':this.isRoundOpen(round)?'開放':'中止','此階段開放權限':this.roundPermissionText(round),
             '追蹤項目數':goals.length,'延續項目數':goals.filter(g=>this.isGoalCarriedToRound(g,roundKey)).length,
-            '本輪新增數':goals.filter(g=>!this.isGoalCarriedToRound(g,roundKey)).length,
+            '此階段新增數':goals.filter(g=>!this.isGoalCarriedToRound(g,roundKey)).length,
             '有效紀錄':goals.reduce((s,g)=>s+this.activeLogArray(g).length,0),
             '作廢紀錄':goals.reduce((s,g)=>s+this.logArray(g).filter(l=>l.voided).length,0),
             '月份勾選':goals.reduce((s,g)=>s+this.checkedMonthCount(g),0),
@@ -1465,11 +1497,11 @@ const app = createApp({
             '課程中調整':goals.reduce((s,g)=>s+this.goalGuidanceEditCount(g),0)
           });
           goals.forEach(g=>{
-            const cur=this.currentVersion(g);
+            const cur=this.currentVersion(g);const createdNumber=Number(g.createdInRound)||round.number;const carriedNumber=Number(String(g.carriedFromRound||'').replace('round',''))||'';
             goalRows.push({
-              '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'Round名稱':round.title,
-              '項目來源':this.goalOriginText(g,roundKey),'建立輪次':Number(g.createdInRound)||round.number,
-              '延續自Round':String(g.carriedFromRound||'').replace('round',''),'來源目標ID':g.carriedFromGoalId||'',
+              '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','階段順序':round.number,'階段名稱':roundName,
+              '項目來源':this.goalOriginText(g,roundKey),'建立階段順序':createdNumber,'建立階段名稱':this.roundNameByNumber(createdNumber),
+              '延續自階段順序':carriedNumber,'延續自階段名稱':carriedNumber?this.roundNameByNumber(carriedNumber):'','來源目標ID':g.carriedFromGoalId||'',
               'Lineage ID':g.lineageId||'','目標ID':g.id,'目前發展項目':cur?.action||'','執行節奏':cur?.frequency||'',
               '版本數':this.versionArray(g).length,'正式改變目標':this.goalOfficialChangeCount(g),'課程中調整':this.goalGuidanceEditCount(g),
               '有效完成紀錄':this.activeLogArray(g).length,'作廢紀錄':this.logArray(g).filter(l=>l.voided).length,
@@ -1477,7 +1509,7 @@ const app = createApp({
               '建立時間':this.formatDateTime(g.createdAt),'最後更新':this.formatDateTime(g.updatedAt)
             });
             this.versionArray(g).forEach((v,index)=>versionRows.push({
-              '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'目標ID':g.id,
+              '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','階段順序':round.number,'階段名稱':roundName,'目標ID':g.id,
               '版本序號':index+1,'是否目前版本':v.id===g.currentVersionId?'是':'否','版本類型':this.versionTypeText(v.changeType),
               '計入正式改變次數':(v.changeType==='adjustment'||v.changeType==='direction')?'是':'否',
               '列入課程中調整':v.changeType==='course_guidance'?'是':'否','發展項目':v.action||'','執行節奏':v.frequency||'',
@@ -1488,7 +1520,7 @@ const app = createApp({
             this.logArray(g).forEach(l=>{
               const logVersion=g.versions?.[l.versionId];
               logRows.push({
-                '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'目標ID':g.id,
+                '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','階段順序':round.number,'階段名稱':roundName,'目標ID':g.id,
                 '紀錄時的發展項目':logVersion?.action||cur?.action||'','目前發展項目':cur?.action||'',
                 '完成日期':l.date||'','完成內容':l.action||'','數量':l.quantity||'','單位':l.unit||'','補充說明':l.note||'',
                 '狀態':l.voided?'已作廢':'有效','作廢原因':l.voidReason||'',
@@ -1499,7 +1531,7 @@ const app = createApp({
             [1,2,3].forEach(n=>{
               const c=g.monthlyChecks?.[`month${n}`],period=this.splitRoundPeriods(round)[n-1];
               checkRows.push({
-                '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','Round':round.number,'目標ID':g.id,
+                '姓名':p.profile?.name||'','員工編號':p.profile?.employeeNo||'','階段順序':round.number,'階段名稱':roundName,'目標ID':g.id,
                 '發展項目':cur?.action||'','月份':n,'期間':period.start?`${period.start}～${period.end}`:'',
                 '是否勾選':c?.checked?'是':'否','勾選者':c?.checkedBy==='teacher'?'講師':c?.checked?'學員':'',
                 '勾選時間':this.formatDateTime(c?.checkedAt),'期間內有效紀錄數':this.monthLogCount(g,n-1,round)
@@ -1508,10 +1540,10 @@ const app = createApp({
           });
         });
         Object.keys(p.audit||{}).forEach(id=>{
-          const a=p.audit[id];
+          const a=p.audit[id];const auditNumber=Number(String(a.roundKey||'').replace('round',''))||'';
           auditRows.push({
             '姓名':p.profile?.name||a.newName||a.oldName||'','目前員工編號':p.profile?.employeeNo||a.newEmployeeNo||'',
-            '紀錄類型':this.auditTypeText(a.type),'Round':String(a.roundKey||'').replace('round',''),'目標ID':a.goalId||'','月份':a.month||'',
+            '紀錄類型':this.auditTypeText(a.type),'階段順序':auditNumber,'階段名稱':auditNumber?this.roundNameByNumber(auditNumber):'','目標ID':a.goalId||'','月份':a.month||'',
             '操作':a.action==='set'?'補登勾選':a.action==='clear'?'清除勾選':a.action||'',
             '修正前姓名':a.oldName||'','修正後姓名':a.newName||'','修正前員工編號':a.oldEmployeeNo||'','修正後員工編號':a.newEmployeeNo||'',
             '修正前內容':a.oldText||'','修正後內容':a.newText||'','修正前頻率':a.oldFrequency||'','修正後頻率':a.newFrequency||'',
@@ -1532,14 +1564,14 @@ const app = createApp({
       };
       const add=(name,ws,widths)=>{formatSheet(ws,widths);XLSX.utils.book_append_sheet(wb,ws,name);};
       add('使用說明',XLSX.utils.aoa_to_sheet(instructionRows),[110,28]);
-      add('活動與開放設定',XLSX.utils.aoa_to_sheet(settingsRows),[18,28,85]);
-      add('學員總覽',sheetFromRows(participantRows,Object.keys(participantRows[0]||{'姓名':'','員工編號':''})),Array(30).fill(18));
-      add('各輪學員進度',sheetFromRows(roundProgressRows,Object.keys(roundProgressRows[0]||{'姓名':'','員工編號':''})),Array(18).fill(18));
-      add('各輪發展項目',sheetFromRows(goalRows,Object.keys(goalRows[0]||{'姓名':'','員工編號':''})),[15,16,8,24,16,10,12,22,25,22,58,28,8,13,12,12,10,10,11,20,20]);
-      add('發展項目版本',sheetFromRows(versionRows,Object.keys(versionRows[0]||{'姓名':'','員工編號':''})),[15,16,8,22,9,12,18,16,15,60,28,45,20,20,12,20,20,20]);
-      add('完成紀錄',sheetFromRows(logRows,Object.keys(logRows[0]||{'姓名':'','員工編號':''})),[15,16,8,22,55,55,13,55,9,9,45,10,32,9,20,20,20]);
-      add('每月勾選',sheetFromRows(checkRows,Object.keys(checkRows[0]||{'姓名':'','員工編號':''})),[15,16,8,22,55,8,24,10,9,20,16]);
-      add('操作與修正歷程',sheetFromRows(auditRows,Object.keys(auditRows[0]||{'姓名':'','目前員工編號':''})),Array(22).fill(20));
+      add('活動與階段設定',XLSX.utils.aoa_to_sheet(settingsRows),[30,30,85]);
+      add('學員總覽',sheetFromRows(participantRows,Object.keys(participantRows[0]||{'姓名':'','員工編號':''})),Array(32).fill(19));
+      add('各階段學員進度',sheetFromRows(roundProgressRows,Object.keys(roundProgressRows[0]||{'姓名':'','員工編號':''})),Array(20).fill(18));
+      add('各階段發展項目',sheetFromRows(goalRows,Object.keys(goalRows[0]||{'姓名':'','員工編號':''})),Array(26).fill(18));
+      add('發展項目版本',sheetFromRows(versionRows,Object.keys(versionRows[0]||{'姓名':'','員工編號':''})),Array(22).fill(18));
+      add('完成紀錄',sheetFromRows(logRows,Object.keys(logRows[0]||{'姓名':'','員工編號':''})),Array(22).fill(18));
+      add('每月勾選',sheetFromRows(checkRows,Object.keys(checkRows[0]||{'姓名':'','員工編號':''})),Array(16).fill(18));
+      add('操作與修正歷程',sheetFromRows(auditRows,Object.keys(auditRows[0]||{'姓名':'','目前員工編號':''})),Array(24).fill(20));
       XLSX.writeFile(wb,`發展追蹤_${this.sanitizeFileName(this.activitySettings.title)}_${nowDateInput()}.xlsx`,{compression:true,cellStyles:true});
       this.showToast('✅ 完整 Excel 已匯出');
     }
